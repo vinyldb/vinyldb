@@ -1,15 +1,16 @@
 use crate::{
     catalog::{catalog::Catalog, schema::Schema},
+    data::tuple::{Tuple, TupleStream},
     error::{Error, Result},
     logical_plan::LogicalPlan,
     physical_plan::{
-        create_table::CreateTableExec,
-        describe_table::DescribeTableExec,
-        explain::ExplainExec,
-        show_tables::ShowTablesExec,
-        tuple::{Tuple, TupleStream},
+        create_table::CreateTableExec, describe_table::DescribeTableExec,
+        explain::ExplainExec, insert::InsertExec, show_tables::ShowTablesExec,
         Executor,
     },
+    plan::insert,
+    storage_engine::StorageEngine,
+    utils::data_dir,
 };
 use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
 
@@ -21,14 +22,20 @@ const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 /// 2. Executing
 pub struct Context {
     pub catalog: Catalog,
+    pub storage: StorageEngine,
 }
 
 impl Context {
     /// Create a new [`Context`].
-    pub fn new() -> Self {
-        Self {
-            catalog: Catalog::new(),
-        }
+    pub fn new() -> Result<Self> {
+        let data_dir = data_dir();
+        std::fs::create_dir_all(data_dir.as_path())?;
+
+        let catalog = Catalog::new();
+        let storage = StorageEngine::new()?;
+        let ctx = Self { catalog, storage };
+
+        Ok(ctx)
     }
 
     pub fn statement_to_logical_plan(
@@ -61,6 +68,9 @@ impl Context {
                     name: table_name.to_string(),
                 })
             }
+            Statement::Insert {
+                table_name, source, ..
+            } => insert(&self.catalog, table_name, source),
             _ => Err(Error::NotImplemented),
         }
     }
@@ -91,6 +101,9 @@ impl Context {
             LogicalPlan::ShowTables => Box::new(ShowTablesExec),
             LogicalPlan::DescribeTable { name } => {
                 Box::new(DescribeTableExec::new(name.clone()))
+            }
+            LogicalPlan::Insert { table, rows } => {
+                Box::new(InsertExec::new(table.clone(), rows.to_vec()))
             }
             _ => return Err(Error::NotImplemented),
         };

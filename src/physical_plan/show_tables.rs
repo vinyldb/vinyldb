@@ -1,12 +1,12 @@
 use crate::{
     catalog::schema::Schema,
     ctx::Context,
-    data_types::{Data, DataType},
-    error::Result,
-    physical_plan::{
+    data::{
         tuple::{Tuple, TupleStream},
-        Executor,
+        types::{Data, DataType},
     },
+    error::Result,
+    physical_plan::Executor,
 };
 
 #[derive(Debug)]

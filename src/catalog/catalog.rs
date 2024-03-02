@@ -81,7 +81,7 @@ impl Catalog {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data_types::DataType;
+    use crate::data::types::DataType;
 
     #[test]
     #[should_panic(

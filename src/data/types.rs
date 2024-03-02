@@ -54,7 +54,7 @@ pub enum Data {
 
 impl Data {
     // Encode `self` into a sequence of bytes.
-    fn encode(&self) -> Bytes {
+    pub fn encode(&self) -> Bytes {
         let mut ret: Vec<u8> = Vec::new();
         match self {
             Data::Bool(raw) => ret.put_u8((*raw).into()),
@@ -76,7 +76,7 @@ impl Data {
     }
 
     // Decode a [`Data`] from `buf` according to the datatype given in `ty`.
-    fn decode(buf: &mut Bytes, ty: &DataType) -> Self {
+    pub fn decode(buf: &mut Bytes, ty: &DataType) -> Self {
         match ty {
             DataType::Bool => Self::Bool(buf.get_u8() == 1),
             DataType::Int64 => Self::Int64(buf.get_i64_ne()),

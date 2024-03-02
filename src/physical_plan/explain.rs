@@ -1,12 +1,12 @@
 use crate::{
     catalog::schema::Schema,
     ctx::Context,
-    data_types::{Data, DataType},
-    error::Result,
-    physical_plan::{
+    data::{
         tuple::{Tuple, TupleStream},
-        Executor,
+        types::{Data, DataType},
     },
+    error::Result,
+    physical_plan::Executor,
 };
 use std::ops::Deref;
 
@@ -47,7 +47,7 @@ impl Executor for ExplainExec {
         Ok(Box::new(
             execs
                 .into_iter()
-                .map(|name| Tuple(vec![Data::String(name)])),
+                .map(|name| Tuple::new([Data::String(name)])),
         ))
     }
 

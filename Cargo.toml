@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 bytes = "1.5.0"
+camino = "1.1.6"
 colored = "2.1.0"
 derive_more = "0.99.17"
 indexmap = "2.2.5"
