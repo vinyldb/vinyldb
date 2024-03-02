@@ -1,8 +1,8 @@
 #![deny(unused_imports)]
 
+mod catalog;
 mod data_types;
 mod error;
-mod schema;
 
 use crate::error::{Error, Result};
 use colored::Colorize;
@@ -19,8 +19,7 @@ const DIALECT: GenericDialect = GenericDialect {};
 fn run_repl(repl: &mut Editor<(), DefaultHistory>) -> Result<()> {
     let line = repl.readline("V ").map_err(Error::ReplError)?;
     let ast = Parser::parse_sql(&DIALECT, &line)
-        .map(|mut asts| asts.pop().unwrap())
-        .map_err(Error::SqlParserError)?;
+        .map(|mut asts| asts.pop().unwrap())?;
 
     println!("SQL: {:?}\n", ast);
 

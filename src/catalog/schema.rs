@@ -1,3 +1,4 @@
+use super::error::{CatalogError, CatalogResult};
 use crate::data_types::DataType;
 use indexmap::{map::Entry, IndexMap};
 
@@ -9,24 +10,22 @@ pub struct Schema {
 
 impl Schema {
     /// Create a new [`Schema`].
-    pub fn new(fields: impl IntoIterator<Item = (String, DataType)>) -> Self {
+    pub fn new(
+        fields: impl IntoIterator<Item = (String, DataType)>,
+    ) -> CatalogResult<Self> {
         let mut ret = IndexMap::new();
         for (name, ty) in fields {
-            match ret.entry(name) {
+            match ret.entry(name.clone()) {
                 Entry::Vacant(v) => {
                     v.insert(ty);
                 }
-                Entry::Occupied(old) => {
-                    panic!(
-                        "duplicate field '{}' with type '{}'",
-                        old.key(),
-                        old.get()
-                    )
+                Entry::Occupied(_) => {
+                    return Err(CatalogError::ColumnExists { name })
                 }
             }
         }
 
-        Self { fields: ret }
+        Ok(Self { fields: ret })
     }
 }
 
@@ -41,7 +40,7 @@ mod tests {
             (String::from("name"), DataType::String),
             (String::from("age"), DataType::Int64),
         ];
-        let schema = Schema::new(fields.clone());
+        let schema = Schema::new(fields.clone()).unwrap();
 
         assert_eq!(
             schema.fields,
@@ -50,12 +49,14 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "duplicate field 'name' with type 'String'")]
+    #[should_panic(
+        expected = "called `Result::unwrap()` on an `Err` value: ColumnExists { name: \"name\" }"
+    )]
     fn schema_new_duplicate_fields() {
         let fields = vec![
             (String::from("name"), DataType::String),
             (String::from("name"), DataType::Int64),
         ];
-        let schema = Schema::new(fields);
+        let _schema = Schema::new(fields).unwrap();
     }
 }
