@@ -1,4 +1,8 @@
+#![deny(unused_imports)]
+
+mod data_types;
 mod error;
+mod schema;
 
 use crate::error::{Error, Result};
 use colored::Colorize;
