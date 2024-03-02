@@ -1,6 +1,8 @@
 //! Data types
 
 use bytes::{Buf, BufMut, Bytes};
+use derive_more::Display;
+use sqlparser::ast::DataType as SqlParserDataType;
 use std::fmt::Formatter;
 
 /// Data types.
@@ -14,14 +16,31 @@ pub enum DataType {
     String,
 }
 
+impl TryFrom<SqlParserDataType> for DataType {
+    type Error = ();
+    fn try_from(value: SqlParserDataType) -> Result<Self, Self::Error> {
+        match value {
+            SqlParserDataType::Bool => Ok(Self::Bool),
+            SqlParserDataType::Int64 => Ok(Self::Int64),
+            SqlParserDataType::Float64 => Ok(Self::Float64),
+            SqlParserDataType::Timestamp(_, _) => Ok(Self::Timestamp),
+            SqlParserDataType::String(_) => Ok(Self::String),
+
+            ty => unimplemented!("uncovered type {}", ty),
+        }
+    }
+}
+
 impl std::fmt::Display for DataType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        <DataType as std::fmt::Debug>::fmt(self, f)
+        let debug = format!("{:?}", self);
+        f.write_str(&debug.to_uppercase())?;
+        Ok(())
     }
 }
 
 /// Data
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Display)]
 pub enum Data {
     Bool(bool),
     Int64(i64),

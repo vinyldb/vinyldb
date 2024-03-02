@@ -4,6 +4,8 @@ use derive_more::{Display, Error};
 pub enum CatalogError {
     #[display(fmt = "Table with name '{}' already exists", name)]
     TableExists { name: String },
+    #[display(fmt = "Table with name '{}' does not exist", name)]
+    TableDoesNotExist { name: String },
     #[display(fmt = "Column with name '{}' already exists", name)]
     ColumnExists { name: String },
 }

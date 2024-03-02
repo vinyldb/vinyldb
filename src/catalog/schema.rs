@@ -5,7 +5,7 @@ use indexmap::{map::Entry, IndexMap};
 /// Describes the metadata of an ordered sequence of relative types.
 #[derive(Debug, Clone)]
 pub struct Schema {
-    fields: IndexMap<String, DataType>,
+    columns: IndexMap<String, DataType>,
 }
 
 impl Schema {
@@ -25,7 +25,33 @@ impl Schema {
             }
         }
 
-        Ok(Self { fields: ret })
+        Ok(Self { columns: ret })
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            columns: IndexMap::new(),
+        }
+    }
+
+    pub fn column_names(&self) -> impl Iterator<Item = &str> {
+        self.columns.keys().map(|str| str as &str)
+    }
+
+    pub fn columns(&self) -> impl Iterator<Item = (&String, &DataType)> {
+        self.columns.iter()
+    }
+
+    pub fn column_datatype(&self, name: &str) -> CatalogResult<&DataType> {
+        self.columns
+            .get(name)
+            .ok_or_else(|| CatalogError::TableDoesNotExist {
+                name: name.to_string(),
+            })
+    }
+
+    pub fn n_columns(&self) -> usize {
+        self.columns.len()
     }
 }
 
@@ -43,7 +69,7 @@ mod tests {
         let schema = Schema::new(fields.clone()).unwrap();
 
         assert_eq!(
-            schema.fields,
+            schema.columns,
             fields.into_iter().collect::<IndexMap<_, _>>()
         );
     }

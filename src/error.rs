@@ -8,6 +8,8 @@ pub enum Error {
     SqlParserError(ParserError),
     ReplError(ReadlineError),
     CatalogError(CatalogError),
+    #[display(fmt = "This feature has not been implemented yet")]
+    NotImplemented,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
