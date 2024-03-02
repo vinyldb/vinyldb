@@ -89,6 +89,12 @@ jobs:
             ~/.rustup/
           key: rust-toolchain-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
 
+      - name: Cache target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+
       - name: setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
