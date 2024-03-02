@@ -1,8 +1,9 @@
 use crate::{
     catalog::{catalog::Table, schema::Schema},
     ctx::Context,
+    data::tuple::TupleStream,
     error::Result,
-    physical_plan::{tuple::TupleStream, Executor},
+    physical_plan::Executor,
 };
 
 #[derive(Debug)]
@@ -24,8 +25,13 @@ impl Executor for CreateTableExec {
     }
 
     fn execute(&self, ctx: &mut Context) -> Result<TupleStream> {
+        let table_name = self.name.clone();
         let table = Table::new(self.name.clone(), self.schema.clone(), self.pk);
+        // check catalog first
         ctx.catalog.add_table(table)?;
+
+        // create disk files
+        ctx.storage.add_table(table_name)?;
 
         Ok(Box::new(std::iter::empty()))
     }

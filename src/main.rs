@@ -2,10 +2,14 @@
 
 mod catalog;
 mod ctx;
-mod data_types;
+mod data;
 mod error;
 mod logical_plan;
 mod physical_plan;
+mod plan;
+mod storage_engine;
+#[macro_use]
+mod utils;
 
 use crate::{
     ctx::Context,
@@ -33,7 +37,9 @@ fn run_repl(
 
     let now = SystemTime::now();
     let logical_plan = ctx.create_logical_plan(line)?;
+    println!("DBG: {:?}", logical_plan);
     let physical_plan = ctx.create_physical_plan(&logical_plan)?;
+    println!("DBG: {:?}", physical_plan);
 
     let iter = ctx.execute(physical_plan.deref())?;
     for tuple in iter {
@@ -55,7 +61,7 @@ fn main() {
         .build();
     let mut repl: Editor<(), DefaultHistory> =
         Editor::with_config(repl_cfg).unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = Context::new().expect("failed to create a context");
 
     println!("{} {}", "VinylDB".yellow(), env!("CARGO_PKG_VERSION"));
     loop {

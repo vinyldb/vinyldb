@@ -1,13 +1,15 @@
 pub mod create_table;
 pub mod describe_table;
 pub mod explain;
+pub mod insert;
 pub mod show_tables;
 pub mod table_scan;
-pub mod tuple;
 
-use crate::{catalog::schema::Schema, ctx::Context, error::Result};
+use crate::{
+    catalog::schema::Schema, ctx::Context, data::tuple::TupleStream,
+    error::Result,
+};
 use std::fmt::Debug;
-use tuple::TupleStream;
 
 /// A node in a physical plan.
 pub trait Executor: Debug {

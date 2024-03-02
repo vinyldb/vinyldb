@@ -1,4 +1,4 @@
-use crate::catalog::schema::Schema;
+use crate::{catalog::schema::Schema, data::tuple::Tuple};
 
 #[derive(Debug)]
 pub enum LogicalPlan {
@@ -16,5 +16,9 @@ pub enum LogicalPlan {
     ShowTables,
     DescribeTable {
         name: String,
+    },
+    Insert {
+        table: String,
+        rows: Vec<Tuple>,
     },
 }

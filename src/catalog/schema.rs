@@ -1,5 +1,5 @@
 use super::error::{CatalogError, CatalogResult};
-use crate::data_types::DataType;
+use crate::data::types::DataType;
 use indexmap::{map::Entry, IndexMap};
 
 /// Describes the metadata of an ordered sequence of relative types.
@@ -36,6 +36,10 @@ impl Schema {
 
     pub fn column_names(&self) -> impl Iterator<Item = &str> {
         self.columns.keys().map(|str| str as &str)
+    }
+
+    pub fn column_datatypes(&self) -> impl Iterator<Item = &DataType> {
+        self.columns.values()
     }
 
     pub fn columns(&self) -> impl Iterator<Item = (&String, &DataType)> {
