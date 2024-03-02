@@ -1,10 +1,16 @@
 #![deny(unused_imports)]
 
 mod catalog;
+mod ctx;
 mod data_types;
 mod error;
+mod logical_plan;
+mod physical_plan;
 
-use crate::error::{Error, Result};
+use crate::{
+    ctx::Context,
+    error::{Error, Result},
+};
 use colored::Colorize;
 use rustyline::{
     config::{BellStyle, Builder},
@@ -12,16 +18,30 @@ use rustyline::{
     history::DefaultHistory,
     ColorMode, EditMode, Editor,
 };
-use sqlparser::{dialect::GenericDialect, parser::Parser};
+use std::{ops::Deref, time::SystemTime};
 
-const DIALECT: GenericDialect = GenericDialect {};
+fn run_repl(
+    repl: &mut Editor<(), DefaultHistory>,
+    ctx: &mut Context,
+) -> Result<()> {
+    let line = repl
+        .readline(&format!("{}", "V ".green()))
+        .map_err(Error::ReplError)?;
+    if line.is_empty() {
+        return Ok(());
+    }
 
-fn run_repl(repl: &mut Editor<(), DefaultHistory>) -> Result<()> {
-    let line = repl.readline("V ").map_err(Error::ReplError)?;
-    let ast = Parser::parse_sql(&DIALECT, &line)
-        .map(|mut asts| asts.pop().unwrap())?;
+    let now = SystemTime::now();
+    let logical_plan = ctx.create_logical_plan(line)?;
+    let physical_plan = ctx.create_physical_plan(&logical_plan)?;
 
-    println!("SQL: {:?}\n", ast);
+    let iter = ctx.execute(physical_plan.deref())?;
+    for tuple in iter {
+        println!("{}", tuple);
+    }
+    println!();
+
+    println!("Took {:?}", now.elapsed().unwrap());
 
     Ok(())
 }
@@ -35,14 +55,16 @@ fn main() {
         .build();
     let mut repl: Editor<(), DefaultHistory> =
         Editor::with_config(repl_cfg).unwrap();
+    let mut ctx = Context::new();
 
     println!("{} {}", "VinylDB".yellow(), env!("CARGO_PKG_VERSION"));
     loop {
-        if let Err(e) = run_repl(&mut repl) {
+        if let Err(e) = run_repl(&mut repl, &mut ctx) {
             match e {
                 Error::ReplError(ReadlineError::Eof) => std::process::exit(0),
+                Error::ReplError(ReadlineError::Interrupted) => continue,
 
-                e => eprintln!("Error: {:?}", e),
+                e => eprintln!("Error: {}", e),
             }
         }
     }

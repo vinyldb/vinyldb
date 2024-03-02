@@ -17,6 +17,23 @@ pub struct Table {
 }
 
 impl Table {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn schema(&self) -> &Schema {
+        &self.schema
+    }
+
+    pub fn pk(&self) -> usize {
+        self.pk
+    }
+
+    pub fn n_columns(&self) -> usize {
+        self.schema.n_columns()
+    }
+}
+
+impl Table {
     /// Create a new [`Table`].
     pub fn new(name: String, schema: Schema, pk: usize) -> Self {
         Self { name, schema, pk }
@@ -46,6 +63,18 @@ impl Catalog {
         };
 
         Ok(())
+    }
+
+    pub fn tables(&self) -> &HashMap<String, Table> {
+        &self.tables
+    }
+
+    pub fn get_table(&self, name: &str) -> CatalogResult<&Table> {
+        self.tables
+            .get(name)
+            .ok_or_else(|| CatalogError::TableDoesNotExist {
+                name: name.to_string(),
+            })
     }
 }
 
