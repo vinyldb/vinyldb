@@ -28,18 +28,10 @@ impl Executor for ExplainExec {
     }
 
     fn execute(&self, _ctx: &mut Context) -> Result<TupleStream> {
-        const HEADER: &str = "┌─────────────────────────────┐\n│┌───────────────────────────┐│\n││       Physical Plan       ││\n│└───────────────────────────┘│\n└─────────────────────────────┘";
-        fn wrap_in_box(name: &str) -> String {
-            let line1 = "┌────────────────────────────┐";
-            let line3 = "└────────────────────────────┘";
-
-            format!("{line1}\n│{:^28}│\n{line3}", name)
-        }
-
         let mut p = self.plan.deref();
-        let mut execs = vec![HEADER.to_string(), wrap_in_box(p.name())];
+        let mut execs = vec![p.name().to_string()];
         while let Some(next) = p.next() {
-            execs.push(wrap_in_box(next.name()));
+            execs.push(next.name().to_string());
 
             p = next;
         }

@@ -4,7 +4,7 @@ use super::{
     error::{CatalogError, CatalogResult},
     schema::Schema,
 };
-use std::collections::hash_map::{Entry, HashMap};
+use indexmap::map::{Entry, IndexMap};
 
 /// A VinylDB table.
 #[derive(Debug, Clone)]
@@ -43,14 +43,14 @@ impl Table {
 /// VinylDB catalog
 #[derive(Debug)]
 pub struct Catalog {
-    tables: HashMap<String, Table>,
+    tables: IndexMap<String, Table>,
 }
 
 impl Catalog {
     /// Create a catalog
     pub fn new() -> Self {
         Self {
-            tables: HashMap::new(),
+            tables: IndexMap::new(),
         }
     }
 
@@ -65,7 +65,7 @@ impl Catalog {
         Ok(())
     }
 
-    pub fn tables(&self) -> &HashMap<String, Table> {
+    pub fn tables(&self) -> &IndexMap<String, Table> {
         &self.tables
     }
 

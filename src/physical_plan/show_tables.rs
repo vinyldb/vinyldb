@@ -9,7 +9,7 @@ use crate::{
     physical_plan::Executor,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ShowTablesExec;
 
 impl Executor for ShowTablesExec {

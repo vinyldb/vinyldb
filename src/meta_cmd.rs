@@ -16,7 +16,7 @@ pub enum MetaCmdError {
     InvalidUsage { correct_usage: &'static str },
 }
 
-#[derive(Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter)]
 #[strum(serialize_all = "lowercase")]
 pub enum MetaCmd {
     Help,

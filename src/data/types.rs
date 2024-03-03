@@ -6,7 +6,7 @@ use sqlparser::ast::DataType as SqlParserDataType;
 use std::fmt::Formatter;
 
 /// Data types.
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone, Eq)]
 pub enum DataType {
     Bool,
     Int64,
@@ -94,6 +94,17 @@ impl Data {
 
                 Self::String(str)
             }
+        }
+    }
+
+    /// Return its [`DataType`].
+    pub fn datatype(&self) -> DataType {
+        match self {
+            Data::Bool(_) => DataType::Bool,
+            Data::Int64(_) => DataType::Int64,
+            Data::Float64(_) => DataType::Float64,
+            Data::String(_) => DataType::String,
+            Data::Timestamp(_) => DataType::Timestamp,
         }
     }
 }

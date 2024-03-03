@@ -1,4 +1,4 @@
-use super::types::Data;
+use super::types::{Data, DataType};
 use crate::catalog::schema::Schema;
 use bytes::{BufMut, Bytes};
 use std::fmt::{Display, Formatter};
@@ -45,6 +45,16 @@ impl Tuple {
         }
 
         Tuple(tuple)
+    }
+
+    /// Return the [`DataType`]s of this `Tuple`.
+    pub fn datatypes(&self) -> Vec<DataType> {
+        self.0.iter().map(|data| data.datatype()).collect()
+    }
+
+    /// Iterate the data in this tuple.
+    pub fn iter(&self) -> impl Iterator<Item = &Data> {
+        self.0.iter()
     }
 }
 
