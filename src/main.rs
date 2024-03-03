@@ -1,10 +1,12 @@
 #![deny(unused_imports)]
 
 mod catalog;
+mod config;
 mod ctx;
 mod data;
 mod error;
 mod logical_plan;
+mod meta_cmd;
 mod physical_plan;
 mod plan;
 mod storage_engine;
@@ -14,6 +16,7 @@ mod utils;
 use crate::{
     ctx::Context,
     error::{Error, Result},
+    meta_cmd::MetaCmd,
 };
 use colored::Colorize;
 use rustyline::{
@@ -35,11 +38,23 @@ fn run_repl(
         return Ok(());
     }
 
+    // this is a meta command
+    if line.starts_with('.') {
+        let meta_cmd = line.parse::<MetaCmd>()?;
+        meta_cmd.execute(ctx)?;
+
+        return Ok(());
+    }
+
     let now = SystemTime::now();
-    let logical_plan = ctx.create_logical_plan(line)?;
-    println!("DBG: {:?}", logical_plan);
+    let statement = ctx.sql_to_statement(line)?;
+
+    if ctx.config.show_ast {
+        println!("Ast: {:?}", statement);
+    }
+
+    let logical_plan = ctx.statement_to_logical_plan(&statement)?;
     let physical_plan = ctx.create_physical_plan(&logical_plan)?;
-    println!("DBG: {:?}", physical_plan);
 
     let iter = ctx.execute(physical_plan.deref())?;
     for tuple in iter {
@@ -47,7 +62,9 @@ fn run_repl(
     }
     println!();
 
-    println!("Took {:?}", now.elapsed().unwrap());
+    if ctx.config.timer {
+        println!("Took {:?}", now.elapsed().unwrap());
+    }
 
     Ok(())
 }
