@@ -7,13 +7,18 @@ use crate::{
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
         explain::ExplainExec, insert::InsertExec, show_tables::ShowTablesExec,
-        Executor,
+        table_scan::TableScanExec, Executor,
     },
     plan::insert,
     storage_engine::StorageEngine,
     utils::data_dir,
 };
-use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
+use sqlparser::{
+    ast::{SetExpr, Statement, TableFactor},
+    dialect::PostgreSqlDialect,
+    parser::Parser,
+};
+use std::ops::Deref;
 
 const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 
@@ -78,6 +83,31 @@ impl Context {
             Statement::Insert {
                 table_name, source, ..
             } => insert(&self.catalog, table_name, source),
+            Statement::Query(query) => {
+                let body = query.body.deref();
+                let SetExpr::Select(select) = body else {
+                    return Err(Error::NotImplemented);
+                };
+                let from = &select.from;
+                if from.len() != 1 {
+                    return Err(Error::NotImplemented);
+                }
+                let from = from.first().unwrap();
+                if !from.joins.is_empty() {
+                    return Err(Error::NotImplemented);
+                }
+                let relation = &from.relation;
+                let TableFactor::Table { name, .. } = relation else {
+                    return Err(Error::NotImplemented);
+                };
+                let name = name.to_string();
+                // check catalog
+                self.catalog.get_table(&name)?;
+
+                Ok(LogicalPlan::TableScan {
+                    name: name.to_string(),
+                })
+            }
             _ => Err(Error::NotImplemented),
         }
     }
@@ -116,6 +146,11 @@ impl Context {
             }
             LogicalPlan::Insert { table, rows } => {
                 Box::new(InsertExec::new(table.clone(), rows.to_vec()))
+            }
+            LogicalPlan::TableScan { name } => {
+                let table_catalog = self.catalog.get_table(name)?;
+                let schema = table_catalog.schema().clone();
+                Box::new(TableScanExec::new(name.clone(), schema))
             }
             _ => return Err(Error::NotImplemented),
         };
