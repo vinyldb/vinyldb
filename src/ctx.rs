@@ -26,6 +26,7 @@ const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 ///
 /// 1. Planing
 /// 2. Executing
+#[derive(Debug)]
 pub struct Context {
     pub config: Config,
     pub catalog: Catalog,
@@ -152,7 +153,6 @@ impl Context {
                 let schema = table_catalog.schema().clone();
                 Box::new(TableScanExec::new(name.clone(), schema))
             }
-            _ => return Err(Error::NotImplemented),
         };
 
         Ok(plan)

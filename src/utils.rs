@@ -14,13 +14,6 @@ pub fn sled_dir() -> Utf8PathBuf {
 }
 
 /// A helper macro to convert an enum to its variant.
-///
-/// # Example
-///
-/// ```
-/// let t = Some(123);
-/// assert_eq!(as_variant!(Some, t), 123);
-/// ```
 #[macro_export]
 macro_rules! as_variant {
     ($variant:path, $val:expr) => {

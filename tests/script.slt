@@ -1,0 +1,70 @@
+query T
+EXPLAIN CREATE TABLE foo;
+----
+CreateTableExec
+
+# TODO: pass this test
+#
+# query T
+# EXPLAIN DESCRIBE foo;
+# ----
+# DescribeTableExec
+
+query
+CREATE TABLE students (name STRING, age INT64);
+----
+
+query T
+EXPLAIN INSERT INTO students VALUES ('steve', 1);
+----
+InsertExec
+
+query T
+EXPLAIN SHOW TABLES;
+----
+ShowTablesExec
+
+query T
+EXPLAIN SELECT * FROM students;
+----
+TableScanExec
+
+query T
+SHOW TABLES;
+----
+students
+
+query
+CREATE TABLE take (name STRING, score FLOAT64);
+----
+
+query T
+SHOW TABLES;
+----
+students
+take
+
+query T
+DESCRIBE students;
+----
+name STRING YES YES
+age INT64 YES NO
+
+query
+INSERT INTO students VALUES ('steve', 1);
+----
+
+query
+select * from students;
+----
+steve 1
+
+query
+INSERT INTO students VALUES ('mike', 2);
+----
+
+query
+select * from students;
+----
+mike 2
+steve 1

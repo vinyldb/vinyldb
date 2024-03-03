@@ -2,6 +2,7 @@ use crate::{catalog::error::CatalogError, error::Result, utils::sled_dir};
 use sled::{Db, Tree};
 use std::collections::{hash_map::Entry, HashMap};
 
+#[derive(Debug)]
 pub struct StorageEngine {
     db: Db,
     trees: HashMap<String, Tree>,

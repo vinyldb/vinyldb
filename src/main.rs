@@ -1,23 +1,3 @@
-#![deny(unused_imports)]
-
-mod catalog;
-mod config;
-mod ctx;
-mod data;
-mod error;
-mod logical_plan;
-mod meta_cmd;
-mod physical_plan;
-mod plan;
-mod storage_engine;
-#[macro_use]
-mod utils;
-
-use crate::{
-    ctx::Context,
-    error::{Error, Result},
-    meta_cmd::MetaCmd,
-};
 use colored::Colorize;
 use rustyline::{
     config::{BellStyle, Builder},
@@ -26,6 +6,11 @@ use rustyline::{
     ColorMode, EditMode, Editor,
 };
 use std::{ops::Deref, time::SystemTime};
+use vinyldb::{
+    ctx::Context,
+    error::{Error, Result},
+    meta_cmd::MetaCmd,
+};
 
 fn run_repl(
     repl: &mut Editor<(), DefaultHistory>,
