@@ -1,4 +1,7 @@
-use crate::{catalog::error::CatalogError, plan::error::PlanError};
+use crate::{
+    catalog::error::CatalogError, meta_cmd::MetaCmdError,
+    plan::error::PlanError,
+};
 use derive_more::{Display, Error, From};
 use rustyline::error::ReadlineError;
 use sled::Error as SledError;
@@ -8,6 +11,7 @@ use std::io::Error as IoError;
 #[derive(Debug, Display, Error, From)]
 pub enum Error {
     SqlParserError(ParserError),
+    MetaCmdError(MetaCmdError),
     ReplError(ReadlineError),
     PlanError(PlanError),
     CatalogError(CatalogError),

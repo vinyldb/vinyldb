@@ -5,3 +5,6 @@ check:
 
 clean:
     rm -rf data
+
+fmt:
+    cargo fmt --all

@@ -1,5 +1,6 @@
 use crate::{
     catalog::{catalog::Catalog, schema::Schema},
+    config::Config,
     data::tuple::{Tuple, TupleStream},
     error::{Error, Result},
     logical_plan::LogicalPlan,
@@ -21,6 +22,7 @@ const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 /// 1. Planing
 /// 2. Executing
 pub struct Context {
+    pub config: Config,
     pub catalog: Catalog,
     pub storage: StorageEngine,
 }
@@ -31,9 +33,14 @@ impl Context {
         let data_dir = data_dir();
         std::fs::create_dir_all(data_dir.as_path())?;
 
+        let config = Config::new();
         let catalog = Catalog::new();
         let storage = StorageEngine::new()?;
-        let ctx = Self { catalog, storage };
+        let ctx = Self {
+            config,
+            catalog,
+            storage,
+        };
 
         Ok(ctx)
     }
@@ -75,14 +82,19 @@ impl Context {
         }
     }
 
-    pub fn create_logical_plan<S: AsRef<str>>(
-        &self,
-        sql: S,
-    ) -> Result<LogicalPlan> {
+    pub fn sql_to_statement<S: AsRef<str>>(&self, sql: S) -> Result<Statement> {
         let sql = sql.as_ref();
         let statement = Parser::parse_sql(&DIALECT, sql)
             .map(|mut asts| asts.pop().unwrap())?;
 
+        Ok(statement)
+    }
+
+    pub fn create_logical_plan<S: AsRef<str>>(
+        &self,
+        sql: S,
+    ) -> Result<LogicalPlan> {
+        let statement = self.sql_to_statement(sql)?;
         self.statement_to_logical_plan(&statement)
     }
 
