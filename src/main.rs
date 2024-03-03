@@ -1,7 +1,5 @@
 #![deny(unused_imports)]
 
-extern crate core;
-
 mod catalog;
 mod config;
 mod ctx;
