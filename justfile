@@ -1,3 +1,6 @@
+build:
+    cargo build
+
 check:
     cargo fmt --all -- --check
     cargo clippy
@@ -10,3 +13,6 @@ clean:
 fmt:
     cargo fmt --all
 
+test:
+    cargo test
+    just clean

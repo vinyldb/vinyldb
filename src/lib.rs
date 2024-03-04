@@ -18,8 +18,9 @@ pub mod utils;
 
 mod sqllogictest;
 
-use crate::ctx::Context;
+use crate::{ctx::Context, data::tuple::Tuple, error::Result};
 use derive_more::{Deref, DerefMut};
+use std::ops::Deref;
 
 /// A VinylDB instance.
 //
@@ -39,5 +40,14 @@ impl VinylDB {
     /// Create a new instance.
     pub fn new() -> VinylDB {
         Self::default()
+    }
+
+    /// Execute SQL and return the result.
+    pub fn sql<S: AsRef<str>>(&mut self, sql: S) -> Result<Vec<Tuple>> {
+        let logical_plan = self.create_logical_plan(sql)?;
+        let physical_plan = self.create_physical_plan(&logical_plan)?;
+        let result = self.collect(physical_plan.deref())?;
+
+        Ok(result)
     }
 }

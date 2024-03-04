@@ -1,3 +1,5 @@
+# For `EXPLAIN`
+
 query T
 EXPLAIN CREATE TABLE foo;
 ----
@@ -29,6 +31,8 @@ EXPLAIN SELECT * FROM students;
 ----
 TableScanExec
 
+# For `EXPLAIN`
+
 query T
 SHOW TABLES;
 ----
@@ -37,6 +41,11 @@ students
 query
 CREATE TABLE take (name STRING, score FLOAT64);
 ----
+
+query
+CREATE TABLE take (name STRING, score FLOAT64);
+----
+Table with name 'take' already exists
 
 query T
 SHOW TABLES;
@@ -50,14 +59,39 @@ DESCRIBE students;
 name STRING YES YES
 age INT64 YES NO
 
+query T
+DESCRIBE a_table_that_does_not_exist;
+----
+Table with name 'a_table_that_does_not_exist' does not exist
+
 query
 INSERT INTO students VALUES ('steve', 1);
 ----
 
 query
+INSERT INTO a_table_that_does_not_exist VALUES ('steve', 1);
+----
+Table with name 'a_table_that_does_not_exist' does not exist
+
+query
+INSERT INTO students VALUES (1);
+----
+table students has 2 columns but 1 columns were supplied
+
+query
+INSERT INTO students VALUES (1, 1);
+----
+the data type of 0th column of table students should be STRING
+
+query
 select * from students;
 ----
 steve 1
+
+query
+select * from a_table_that_does_not_exist;
+----
+Table with name 'a_table_that_does_not_exist' does not exist
 
 query
 INSERT INTO students VALUES ('mike', 2);
