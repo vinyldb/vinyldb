@@ -3,7 +3,7 @@ use crate::catalog::schema::Schema;
 use bytes::BufMut;
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tuple(Vec<Data>);
 
 impl Display for Tuple {
@@ -69,3 +69,28 @@ impl Tuple {
 
 /// An iterator over [`Tuple`]s.
 pub type TupleStream = Box<dyn Iterator<Item = Tuple>>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn encode_decode() {
+        let schema = Schema::new([
+            ("1".into(), DataType::Bool),
+            ("2".into(), DataType::String),
+            ("3".into(), DataType::Int64),
+        ])
+        .unwrap();
+        let tuple = Tuple::new(vec![
+            Data::Bool(true),
+            Data::String("foo".into()),
+            Data::Int64(1),
+        ]);
+        let bytes = tuple.encode();
+
+        let decoded = Tuple::decode(bytes, &schema);
+        assert_eq!(tuple, decoded);
+    }
+}
