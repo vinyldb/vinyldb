@@ -8,6 +8,7 @@ pub mod config;
 pub mod ctx;
 pub mod data;
 pub mod error;
+pub mod expr;
 pub mod logical_plan;
 pub mod meta_cmd;
 pub mod physical_plan;
