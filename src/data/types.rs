@@ -1,6 +1,6 @@
 //! Data types
 
-use bytes::{Buf, BufMut, Bytes};
+use bytes::{Buf, BufMut};
 use derive_more::Display;
 use sqlparser::ast::DataType as SqlParserDataType;
 use std::fmt::Formatter;
@@ -52,31 +52,73 @@ pub enum Data {
     String(String),
 }
 
-impl Data {
-    // Encode `self` into a sequence of bytes.
-    pub fn encode(&self) -> Bytes {
-        let mut ret: Vec<u8> = Vec::new();
+/// Encoded data, it will be `Borrowed` when allocation is not needed.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataEncoded<'data> {
+    Borrowed(&'data [u8]),
+    Owned(Box<[u8]>),
+}
+
+impl<'data> AsRef<[u8]> for DataEncoded<'data> {
+    fn as_ref(&self) -> &[u8] {
         match self {
-            Data::Bool(raw) => ret.put_u8((*raw).into()),
-            Data::Int64(raw) => ret.put_i64_ne(*raw),
-            Data::Float64(raw) => ret.put_f64_ne(*raw),
-            Data::Timestamp(raw) => ret.put_i64_ne(*raw),
+            DataEncoded::Borrowed(slice) => slice,
+            DataEncoded::Owned(boxed_slice) => boxed_slice.as_ref(),
+        }
+    }
+}
+
+impl Data {
+    /// How many bytes it will take after encoding.
+    pub fn encode_size(&self) -> usize {
+        match self {
+            Data::Bool(_) => std::mem::size_of::<u8>(),
+            Data::Int64(_) => std::mem::size_of::<i64>(),
+            Data::Float64(_) => std::mem::size_of::<f64>(),
+            Data::Timestamp(_) => std::mem::size_of::<i64>(),
+            Data::String(raw) => std::mem::size_of::<u64>() + raw.len(),
+        }
+    }
+
+    /// Encode `self` into a sequence of bytes.
+    pub fn encode(&self) -> DataEncoded {
+        match self {
+            Data::Bool(raw) => {
+                let bytes: &[u8; 1] = bytemuck::cast_ref(raw);
+                DataEncoded::Borrowed(bytes.as_slice())
+            }
+            Data::Int64(raw) => {
+                let bytes: &[u8; 8] = bytemuck::cast_ref(raw);
+                DataEncoded::Borrowed(bytes.as_slice())
+            }
+            Data::Float64(raw) => {
+                let bytes: &[u8; 8] = bytemuck::cast_ref(raw);
+                DataEncoded::Borrowed(bytes.as_slice())
+            }
+            Data::Timestamp(raw) => {
+                let bytes: &[u8; 8] = bytemuck::cast_ref(raw);
+                DataEncoded::Borrowed(bytes.as_slice())
+            }
             Data::String(raw) => {
+                let mut buf = Vec::new();
                 // string is var-len, so wew store a length before the actual data
-                ret.put_u64_ne(
+                buf.put_u64_ne(
                     raw.len()
                         .try_into()
                         .expect("should never fail on a 64-bit machine"),
                 );
-                ret.put_slice(raw.as_bytes());
+                buf.put_slice(raw.as_bytes());
+                DataEncoded::Owned(buf.into_boxed_slice())
             }
         }
-
-        ret.into()
     }
 
-    // Decode a [`Data`] from `buf` according to the datatype given in `ty`.
-    pub fn decode(buf: &mut Bytes, ty: &DataType) -> Self {
+    /// Decode a [`Data`] from `buf` according to the datatype given in `ty`.
+    ///
+    /// # NOTE
+    /// Copy seems to be unavoidable.
+    pub fn decode<B: AsRef<[u8]>>(buf: B, ty: &DataType) -> Self {
+        let mut buf = buf.as_ref();
         match ty {
             DataType::Bool => Self::Bool(buf.get_u8() == 1),
             DataType::Int64 => Self::Int64(buf.get_i64_ne()),
@@ -112,26 +154,37 @@ impl Data {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bytes::BytesMut;
     use pretty_assertions::assert_eq;
 
     #[test]
     fn data_encode_works() {
         let raw = true;
         let bool = Data::Bool(raw);
-        assert_eq!(bool.encode(), Bytes::from(vec![raw.into()]));
+        assert_eq!(
+            bool.encode(),
+            DataEncoded::Borrowed(vec![raw.into()].as_slice())
+        );
 
         let raw = 8_i64;
         let int64 = Data::Int64(raw);
-        assert_eq!(int64.encode(), Bytes::from(raw.to_ne_bytes().to_vec()));
+        assert_eq!(
+            int64.encode(),
+            DataEncoded::Borrowed(raw.to_ne_bytes().as_slice())
+        );
 
         let raw = 10_f64;
         let f64 = Data::Float64(raw);
-        assert_eq!(f64.encode(), Bytes::from(raw.to_ne_bytes().to_vec()));
+        assert_eq!(
+            f64.encode(),
+            DataEncoded::Borrowed(raw.to_ne_bytes().as_slice())
+        );
 
         let raw = 70_i64;
         let timestamp = Data::Timestamp(raw);
-        assert_eq!(timestamp.encode(), Bytes::from(raw.to_ne_bytes().to_vec()));
+        assert_eq!(
+            timestamp.encode(),
+            DataEncoded::Borrowed(raw.to_ne_bytes().as_slice())
+        );
 
         let raw = String::from("VinylDB");
         let string = Data::String(raw.clone());
@@ -146,7 +199,10 @@ mod tests {
 
             ret
         };
-        assert_eq!(string.encode(), Bytes::from(expected));
+        assert_eq!(
+            string.encode(),
+            DataEncoded::Owned(expected.into_boxed_slice())
+        );
     }
 
     #[test]
@@ -166,18 +222,20 @@ mod tests {
             Data::Bool(true),
         ];
 
-        let mut bytes = {
-            let mut ret = BytesMut::new();
+        let bytes = {
+            let mut ret = Vec::new();
             for d in data.clone() {
-                ret.put(d.encode());
+                ret.put(d.encode().as_ref());
             }
 
-            Bytes::from(ret)
+            ret
         };
 
+        let mut start = 0_usize;
         for (ty, expected) in types.iter().zip(data) {
-            let res = Data::decode(&mut bytes, ty);
+            let res = Data::decode(&bytes[start..], ty);
             assert_eq!(res, expected);
+            start += res.encode_size();
         }
     }
 }

@@ -1,6 +1,7 @@
 #![deny(unused_imports)]
 #![deny(missing_debug_implementations)]
 #![deny(missing_copy_implementations)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 pub mod catalog;
 pub mod config;
@@ -26,11 +27,17 @@ use derive_more::{Deref, DerefMut};
 #[derive(Deref, DerefMut, Debug)]
 pub struct VinylDB(Context);
 
-impl VinylDB {
-    /// Create a new instance.
-    pub fn new() -> VinylDB {
+impl Default for VinylDB {
+    fn default() -> Self {
         let ctx = Context::new().expect("failed to create a context");
 
         VinylDB(ctx)
+    }
+}
+
+impl VinylDB {
+    /// Create a new instance.
+    pub fn new() -> VinylDB {
+        Self::default()
     }
 }

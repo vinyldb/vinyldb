@@ -5,7 +5,6 @@ use crate::{
     error::Result,
     physical_plan::Executor,
 };
-use bytes::Bytes;
 
 #[derive(Debug)]
 pub struct TableScanExec {
@@ -30,8 +29,7 @@ impl Executor for TableScanExec {
         let mut tuples = Vec::with_capacity(tree.len());
         for res_item in tree {
             let (_, raw_tuple) = res_item?;
-            let mut raw_tuple = Bytes::copy_from_slice(raw_tuple.as_ref());
-            let tuple = Tuple::decode(&mut raw_tuple, &self.schema);
+            let tuple = Tuple::decode(&raw_tuple, &self.schema);
 
             tuples.push(tuple);
         }

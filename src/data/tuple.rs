@@ -1,6 +1,6 @@
 use super::types::{Data, DataType};
 use crate::catalog::schema::Schema;
-use bytes::{BufMut, Bytes};
+use bytes::BufMut;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
@@ -29,18 +29,27 @@ impl Tuple {
         self.0.get(idx)
     }
 
-    pub fn encode(&self) -> Bytes {
+    /// Encode this `Tuple` into a sequence of bytes.
+    ///
+    /// # NOTE
+    /// Copy is not avoidable.
+    pub fn encode(&self) -> Box<[u8]> {
         let mut ret = Vec::new();
         for column in self.0.iter() {
             ret.put_slice(column.encode().as_ref());
         }
-        ret.into()
+        ret.into_boxed_slice()
     }
 
-    pub fn decode(buf: &mut Bytes, schema: &Schema) -> Self {
+    /// Decode a `Tuple` from a sequence of bytes.
+    pub fn decode<B: AsRef<[u8]>>(buf: B, schema: &Schema) -> Self {
+        let buf = buf.as_ref();
+        let mut start = 0_usize;
+
         let mut tuple = Vec::with_capacity(schema.n_columns());
         for (_, datatype) in schema.columns() {
-            let data = Data::decode(buf, datatype);
+            let data = Data::decode(&buf[start..], datatype);
+            start += data.encode_size();
             tuple.push(data);
         }
 
@@ -58,4 +67,5 @@ impl Tuple {
     }
 }
 
+/// An iterator over [`Tuple`]s.
 pub type TupleStream = Box<dyn Iterator<Item = Tuple>>;

@@ -2,7 +2,7 @@ pub mod error;
 
 use crate::{
     as_variant,
-    catalog::{catalog::Catalog, schema::Schema},
+    catalog::{schema::Schema, Catalog},
     data::{
         tuple::Tuple,
         types::{Data, DataType},
@@ -30,7 +30,7 @@ fn check_column(
                 });
             };
 
-            return Ok(Data::Bool(*bool));
+            Ok(Data::Bool(*bool))
         }
         DataType::Int64 => {
             let Value::Number(num_str, _) = &value else {
@@ -47,7 +47,7 @@ fn check_column(
                 }
             })?;
 
-            return Ok(Data::Int64(num));
+            Ok(Data::Int64(num))
         }
         DataType::Float64 => {
             let Value::Number(num_str, _) = &value else {
@@ -64,7 +64,7 @@ fn check_column(
                 }
             })?;
 
-            return Ok(Data::Float64(num));
+            Ok(Data::Float64(num))
         }
         DataType::Timestamp => {
             todo!()
@@ -98,11 +98,7 @@ fn check_column(
     }
 }
 
-fn check_row(
-    table: &str,
-    schema: &Schema,
-    row: &Vec<Expr>,
-) -> PlanResult<Tuple> {
+fn check_row(table: &str, schema: &Schema, row: &[Expr]) -> PlanResult<Tuple> {
     let n_column = schema.n_columns();
     let row_len = row.len();
     if n_column != row_len {
@@ -115,15 +111,14 @@ fn check_row(
 
     let mut tuple = Vec::with_capacity(n_column);
     let datatypes = schema.column_datatypes();
-    for (idx, (datatype, columnn)) in datatypes.zip(row.into_iter()).enumerate()
-    {
+    for (idx, (datatype, columnn)) in datatypes.zip(row.iter()).enumerate() {
         let value = as_variant!(Expr::Value, columnn);
         let data = check_column(table, idx, datatype, value)?;
 
         tuple.push(data);
     }
 
-    Ok(Tuple::new(tuple.into_iter()))
+    Ok(Tuple::new(tuple))
 }
 
 pub fn insert(
