@@ -1,6 +1,7 @@
 pub mod create_table;
 pub mod describe_table;
 pub mod explain;
+pub mod filter;
 pub mod insert;
 pub mod show_tables;
 pub mod table_scan;
