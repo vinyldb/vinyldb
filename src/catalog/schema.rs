@@ -57,6 +57,16 @@ impl Schema {
     pub fn n_columns(&self) -> usize {
         self.columns.len()
     }
+
+    /// Get the index of the column specified by `name`, an error will be returned
+    /// if not found.
+    pub fn index_of_column(&self, name: &str) -> CatalogResult<usize> {
+        self.columns.get_index_of(name).ok_or_else(|| {
+            CatalogError::TableDoesNotExist {
+                name: name.to_string(),
+            }
+        })
+    }
 }
 
 #[cfg(test)]

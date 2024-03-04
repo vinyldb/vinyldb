@@ -1,9 +1,13 @@
 //! Data types
 
+use crate::as_variant;
 use bytes::{Buf, BufMut};
 use derive_more::Display;
 use sqlparser::ast::DataType as SqlParserDataType;
-use std::fmt::Formatter;
+use std::{
+    fmt::Formatter,
+    ops::{Add, Sub},
+};
 
 /// Data types.
 #[derive(Debug, PartialEq, Copy, Clone, Eq)]
@@ -40,7 +44,7 @@ impl std::fmt::Display for DataType {
 }
 
 /// Data
-#[derive(Debug, PartialEq, Clone, Display)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Display)]
 pub enum Data {
     Bool(bool),
     Int64(i64),
@@ -148,6 +152,56 @@ impl Data {
             Data::String(_) => DataType::String,
             Data::Timestamp(_) => DataType::Timestamp,
         }
+    }
+}
+
+impl Add for &Data {
+    type Output = Data;
+    fn add(self, rhs: Self) -> Self::Output {
+        match self {
+            Data::Int64(lhs) => {
+                let rhs = as_variant!(Data::Int64, rhs);
+                Data::Int64(lhs + rhs)
+            }
+            Data::Float64(lhs) => {
+                let rhs = as_variant!(Data::Float64, rhs);
+                Data::Float64(lhs + rhs)
+            }
+
+            _ => panic!("trying to do Add with {} and {}", self, rhs),
+        }
+    }
+}
+
+impl Add for Data {
+    type Output = Data;
+    fn add(self, rhs: Self) -> Self::Output {
+        <&Data as Add>::add(&self, &rhs)
+    }
+}
+
+impl Sub for &Data {
+    type Output = Data;
+    fn sub(self, rhs: Self) -> Self::Output {
+        match self {
+            Data::Int64(lhs) => {
+                let rhs = as_variant!(Data::Int64, rhs);
+                Data::Int64(lhs - rhs)
+            }
+            Data::Float64(lhs) => {
+                let rhs = as_variant!(Data::Float64, rhs);
+                Data::Float64(lhs - rhs)
+            }
+
+            _ => panic!("trying to do Sub with {} and {}", self, rhs),
+        }
+    }
+}
+
+impl Sub for Data {
+    type Output = Data;
+    fn sub(self, rhs: Self) -> Self::Output {
+        <&Data as Sub>::sub(&self, &rhs)
     }
 }
 
