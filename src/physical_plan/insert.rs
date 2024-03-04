@@ -32,7 +32,7 @@ impl Executor for InsertExec {
 
         for row in self.rows.iter() {
             let pk = row.get(pk).unwrap();
-            assert!(tree.insert(pk.encode(), row.encode().as_ref())?.is_none());
+            assert!(tree.insert(pk.encode(), row.encode())?.is_none());
         }
 
         Ok(Box::new(std::iter::empty()))

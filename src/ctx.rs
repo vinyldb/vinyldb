@@ -1,5 +1,5 @@
 use crate::{
-    catalog::{catalog::Catalog, schema::Schema},
+    catalog::{schema::Schema, Catalog},
     config::Config,
     data::tuple::{Tuple, TupleStream},
     error::{Error, Result},
@@ -58,7 +58,7 @@ impl Context {
         match statement {
             Statement::CreateTable { name, columns, .. } => {
                 let pk = 0;
-                let schema = Schema::new(columns.into_iter().map(|col| {
+                let schema = Schema::new(columns.iter().map(|col| {
                     (
                         col.name.value.clone(),
                         col.data_type.clone().try_into().unwrap(),

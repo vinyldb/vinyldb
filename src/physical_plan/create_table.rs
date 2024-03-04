@@ -1,5 +1,5 @@
 use crate::{
-    catalog::{catalog::Table, schema::Schema},
+    catalog::{schema::Schema, Table},
     ctx::Context,
     data::tuple::TupleStream,
     error::Result,
