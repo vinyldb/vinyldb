@@ -1,8 +1,14 @@
 //! To make VinylDB can use Sqllogictest.
 
-use crate::{data::types::DataType, error::Error, VinylDB};
+use crate::{
+    data::{
+        tuple::Tuple,
+        types::{Data, DataType},
+    },
+    error::Error,
+    VinylDB,
+};
 use sqllogictest::{ColumnType, DBOutput, DB};
-use std::ops::Deref;
 
 impl ColumnType for DataType {
     fn from_char(value: char) -> Option<Self> {
@@ -34,9 +40,10 @@ impl DB for VinylDB {
         &mut self,
         sql: &str,
     ) -> Result<DBOutput<Self::ColumnType>, Self::Error> {
-        let logical_plan = self.create_logical_plan(sql)?;
-        let physical_plan = self.create_physical_plan(&logical_plan)?;
-        let result = self.collect(physical_plan.deref())?;
+        // map an error to a line of string so that we can do assertions on it.
+        let result = self.sql(sql).unwrap_or_else(|e| {
+            vec![Tuple::new([Data::String(e.to_string())])]
+        });
 
         if result.is_empty() {
             return Ok(DBOutput::StatementComplete(0));
