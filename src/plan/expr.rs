@@ -7,7 +7,6 @@ use crate::{
     catalog::schema::Schema, expr::Expr, plan::error::UnimplementedFeature,
 };
 use sqlparser::ast::Expr as SqlExpr;
-use std::ops::Deref;
 
 pub fn convert_expr(_schema: &Schema, sql_expr: SqlExpr) -> PlanResult<Expr> {
     match sql_expr {
@@ -17,8 +16,8 @@ pub fn convert_expr(_schema: &Schema, sql_expr: SqlExpr) -> PlanResult<Expr> {
             Ok(Expr::Literal(data))
         }
         SqlExpr::BinaryOp { left, op, right } => {
-            let left = convert_expr(_schema, left.deref().clone())?;
-            let right = convert_expr(_schema, right.deref().clone())?;
+            let left = convert_expr(_schema, Box::into_inner(left))?;
+            let right = convert_expr(_schema, Box::into_inner(right))?;
             let op = convert_op(op)?;
 
             Ok(Expr::BinaryExpr {

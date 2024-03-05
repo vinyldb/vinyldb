@@ -86,7 +86,7 @@ table students has 2 columns but 1 columns were supplied
 query T
 INSERT INTO students VALUES (1, 1);
 ----
-the data type of 0th column of table students should be STRING
+the data type of 0th column of table students should be STRING but found INT64
 
 query TI
 select * from students;

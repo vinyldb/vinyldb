@@ -21,6 +21,8 @@ pub enum UnimplementedFeature {
     Expr { expr: SQLExpr },
     #[display(fmt = "Unsupported multi-level table {object_name}")]
     MultiLevelTable { object_name: ObjectName },
+    #[display(fmt = "NULL is not supported")]
+    Null,
 }
 
 /// Errors that could happen while converting an SQL AST to a [`LogicalPlan`].
@@ -31,21 +33,21 @@ pub enum UnimplementedFeature {
 #[derive(Debug, Display, Error)]
 pub enum PlanError {
     #[display(
-        fmt = "table {table} has {expect} columns but {found} columns were supplied"
+        fmt = "table {table} has {expected} columns but {found} columns were supplied"
     )]
     MismatchedNumberColumns {
         table: String,
-        expect: usize,
+        expected: usize,
         found: usize,
     },
     #[display(
-        fmt = "the data type of {column_idx}th column of table {table} should be {expect}"
+        fmt = "the data type of {column_idx}th column of table {table} should be {expected} but found {found}"
     )]
     MismatchedType {
         table: String,
         column_idx: usize,
-        expect: DataType,
-        // TODO: add a found field
+        expected: DataType,
+        found: DataType,
     },
     #[display(fmt = "could not convert {val} to {to}")]
     ConversionError { val: Value, to: DataType },
