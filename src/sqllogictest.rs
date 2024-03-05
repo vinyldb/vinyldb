@@ -17,14 +17,14 @@ impl ColumnType for DataType {
             'T' => Some(Self::String),
             'I' => Some(Self::Int64),
             'F' => Some(Self::Float64),
-            _ => unreachable!(),
+            val => unreachable!("{val}"),
         }
     }
 
     fn to_char(&self) -> char {
         match self {
             Self::Bool => 'B',
-            Self::String => 'S',
+            Self::String => 'T',
             Self::Int64 => 'I',
             Self::Float64 => 'F',
             Self::Timestamp => todo!(),

@@ -65,6 +65,20 @@ impl Tuple {
     pub fn iter(&self) -> impl Iterator<Item = &Data> {
         self.0.iter()
     }
+
+    /// Project the columns specified in `proj`.
+    ///
+    /// # NOTE
+    /// `proj` can contain invalid indexes, they will be ignored.
+    pub fn project(self, proj: &[usize]) -> Tuple {
+        Tuple::new(
+            self.0
+                .into_iter()
+                .enumerate()
+                .filter(|(idx, _)| proj.contains(idx))
+                .map(|(_, data)| data),
+        )
+    }
 }
 
 /// An iterator over [`Tuple`]s.

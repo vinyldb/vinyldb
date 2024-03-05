@@ -31,4 +31,9 @@ pub enum LogicalPlan {
         fetch: usize,
         input: Box<LogicalPlan>,
     },
+    Projection {
+        expr: Vec<Expr>,
+        schema: Schema,
+        input: Box<LogicalPlan>,
+    },
 }

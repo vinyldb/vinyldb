@@ -3,13 +3,14 @@ use super::{
     expr::convert_expr,
 };
 use crate::{
-    catalog::Catalog,
-    data::types::Data,
+    catalog::{schema::Schema, Catalog},
+    data::types::{Data, DataType},
     error::{Error, Result},
+    expr::Expr,
     logical_plan::LogicalPlan,
     plan::object_name_to_table_name::object_name_to_table_name,
 };
-use sqlparser::ast::{SetExpr, Statement, TableFactor};
+use sqlparser::ast::{SelectItem, SetExpr, Statement, TableFactor};
 
 pub(crate) fn convert(
     catalog: &Catalog,
@@ -74,6 +75,66 @@ pub(crate) fn convert(
                     fetch: limit,
                     input: Box::new(base),
                 }
+            }
+
+            let projs = select.projection;
+            assert!(!projs.is_empty());
+            let need_a_projection_logical_plan = !(projs.len() == 1
+                && matches!(projs[0], SelectItem::Wildcard(_)));
+            if need_a_projection_logical_plan {
+                let mut exprs: Vec<Expr> = Vec::new();
+                let mut columns: Vec<(String, DataType)> = Vec::new();
+                for proj in projs {
+                    match proj {
+                        SelectItem::UnnamedExpr(expr) => {
+                            let expr = convert_expr(schema, expr)?;
+                            let Expr::Column(column) = &expr else {
+                                return Err(Error::PlanError(PlanError::Unimplemented(UnimplementedFeature::ProjectionWithNonColumnExpr {
+                                    expr,
+                                })));
+                            };
+                            let column_datatype =
+                                schema.column_datatype(column)?;
+                            columns.push((column.clone(), *column_datatype));
+                            exprs.push(expr);
+                        }
+                        SelectItem::ExprWithAlias { .. } => {
+                            return Err(Error::PlanError(
+                                PlanError::Unimplemented(
+                                    UnimplementedFeature::ProjectionWithAlias {
+                                        select_item: proj,
+                                    },
+                                ),
+                            ));
+                        }
+                        SelectItem::QualifiedWildcard(_, _) => {
+                            return Err(Error::PlanError(
+                                PlanError::Unimplemented(
+                                    UnimplementedFeature::ProjectionQualifiedWildcard {
+                                        select_item: proj,
+                                    },
+                                ),
+                            ));
+                        }
+                        SelectItem::Wildcard(_) => {
+                            columns.extend(schema.columns().map(
+                                |(name, datatype)| (name.clone(), *datatype),
+                            ));
+                            exprs.extend(
+                                schema
+                                    .column_names()
+                                    .map(|name| Expr::Column(name.to_string())),
+                            );
+                        }
+                    }
+                }
+
+                let schema = Schema::new(columns)?;
+                base = LogicalPlan::Projection {
+                    expr: exprs,
+                    schema,
+                    input: Box::new(base),
+                };
             }
 
             Ok(base)

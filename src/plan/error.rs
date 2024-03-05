@@ -1,11 +1,11 @@
 use crate::{
     data::types::{Data, DataType},
-    expr::Expr,
+    expr::{Expr, Operator},
 };
 use derive_more::{Display, Error};
 use sqlparser::ast::{
     BinaryOperator, DataType as SQLDataType, Expr as SQLExpr, ObjectName,
-    Statement, Value,
+    SelectItem, Statement, Value,
 };
 
 /// Features that have not been supported by VinylDB.
@@ -24,8 +24,30 @@ pub enum UnimplementedFeature {
     Expr { expr: SQLExpr },
     #[display(fmt = "Unsupported multi-level table {object_name}")]
     MultiLevelTable { object_name: ObjectName },
+    #[display(fmt = "Projection only supports columns, found: {expr}")]
+    ProjectionWithNonColumnExpr { expr: Expr },
+    #[display(fmt = "Projection does not support alias, found: {select_item}")]
+    ProjectionWithAlias { select_item: SelectItem },
+    #[display(
+        fmt = "Projection does not support QualifiedWildcard, found: {select_item}"
+    )]
+    ProjectionQualifiedWildcard { select_item: SelectItem },
     #[display(fmt = "NULL is not supported")]
     Null,
+}
+
+#[derive(Debug, Display, Error, Copy, Clone)]
+pub enum ExprEvaluationError {
+    #[display(
+        fmt = "trying to do '{op}' on different types '{lhs}' and '{rhs}'"
+    )]
+    DoOpOnDiffTypes {
+        lhs: DataType,
+        op: Operator,
+        rhs: DataType,
+    },
+    #[display(fmt = "Operation '{op}' cannot be done on type '{datatype}'")]
+    UnsupportedTypeForOp { datatype: DataType, op: Operator },
 }
 
 /// Errors that could happen while converting an SQL AST to a [`LogicalPlan`].
@@ -54,8 +76,8 @@ pub enum PlanError {
     },
     #[display(fmt = "could not convert {val} to {to}")]
     ConversionError { val: Value, to: DataType },
-    #[display(fmt = "could not evaluate {:?}", expr)]
-    ExprEvaluationError { expr: Expr },
+    #[display(fmt = "could not evaluate {_0}")]
+    ExprEvaluationError(ExprEvaluationError),
     #[display(fmt = "limit is not a unsigned integer {}", limit)]
     NonUintLimit { limit: Data },
     #[display(fmt = "This feature has not been implemented yet: {_0}")]
