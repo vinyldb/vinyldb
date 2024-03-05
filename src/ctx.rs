@@ -7,7 +7,8 @@ use crate::{
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
         explain::ExplainExec, filter::FilterExec, insert::InsertExec,
-        show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
+        limit::LimitExec, show_tables::ShowTablesExec,
+        table_scan::TableScanExec, Executor,
     },
     storage_engine::StorageEngine,
     utils::data_dir,
@@ -95,6 +96,10 @@ impl Context {
             LogicalPlan::Filter { predicate, input } => {
                 let input = self.create_physical_plan(input)?;
                 Box::new(FilterExec::new(predicate.clone(), input))
+            }
+            LogicalPlan::Limit { fetch, input } => {
+                let input = self.create_physical_plan(input)?;
+                Box::new(LimitExec::new(*fetch, input))
             }
         };
 

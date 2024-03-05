@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{
     catalog::Catalog,
+    data::types::Data,
     error::{Error, Result},
     logical_plan::LogicalPlan,
     plan::object_name_to_table_name::object_name_to_table_name,
@@ -54,6 +55,25 @@ pub(crate) fn convert(
                     predicate: expr,
                     input: Box::new(base),
                 };
+            }
+
+            if let Some(limit) = query.limit {
+                let expr = convert_expr(schema, limit)?;
+                let data = expr.evaluate_as_constant();
+                let Data::Int64(limit) = data else {
+                    return Err(Error::PlanError(PlanError::NonUintLimit {
+                        limit: data,
+                    }));
+                };
+
+                let limit: usize = limit.try_into().map_err(|_| {
+                    Error::PlanError(PlanError::NonUintLimit { limit: data })
+                })?;
+
+                base = LogicalPlan::Limit {
+                    fetch: limit,
+                    input: Box::new(base),
+                }
             }
 
             Ok(base)

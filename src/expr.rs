@@ -88,6 +88,19 @@ impl Expr {
 
         Ok(ret)
     }
+
+    /// Evaluate this `Expr` to a constant
+    ///
+    /// # NOTE
+    /// This `Expr` must not rely on external data, e.g., tuple or schema, or this
+    /// function will panic.
+    pub fn evaluate_as_constant(&self) -> Data {
+        // TODO: BinaryExpr can be `
+        match self {
+            Expr::Literal(data) => data.clone(),
+            _ => panic!("trying to evaluate a non-constant Expr to a constant"),
+        }
+    }
 }
 
 /// Operators supported by VinylDB.
