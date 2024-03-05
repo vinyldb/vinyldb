@@ -31,7 +31,12 @@ EXPLAIN SELECT * FROM students;
 ----
 TableScanExec
 
-# For `EXPLAIN`
+query T
+EXPLAIN SELECT * FROM students WHERE name = 'steve';
+----
+FilterExec
+TableScanExec
+
 
 query T
 SHOW TABLES;
@@ -68,27 +73,27 @@ query
 INSERT INTO students VALUES ('steve', 1);
 ----
 
-query
+query T
 INSERT INTO a_table_that_does_not_exist VALUES ('steve', 1);
 ----
 Table with name 'a_table_that_does_not_exist' does not exist
 
-query
+query T
 INSERT INTO students VALUES (1);
 ----
 table students has 2 columns but 1 columns were supplied
 
-query
+query T
 INSERT INTO students VALUES (1, 1);
 ----
 the data type of 0th column of table students should be STRING
 
-query
+query TI
 select * from students;
 ----
 steve 1
 
-query
+query T
 select * from a_table_that_does_not_exist;
 ----
 Table with name 'a_table_that_does_not_exist' does not exist
@@ -97,8 +102,28 @@ query
 INSERT INTO students VALUES ('mike', 2);
 ----
 
+query TI
+SELECT * FROM students;
+----
+mike 2
+steve 1
+
+query TI
+SELECT * FROM students WHERE name = 'steve';
+----
+steve 1
+
+query TI
+SELECT * FROM students WHERE age > 1;
+----
+mike 2
+
 query
-select * from students;
+SELECT * FROM students WHERE age < 1 AND name = 'steve';
+----
+
+query TI
+SELECT * FROM students WHERE name = 'steve' OR age = 2;
 ----
 mike 2
 steve 1
