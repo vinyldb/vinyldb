@@ -3,7 +3,6 @@
 #![deny(missing_copy_implementations)]
 #![allow(clippy::unnecessary_lazy_evaluations)]
 #![deny(clippy::undocumented_unsafe_blocks)]
-
 #![feature(box_into_inner)]
 
 pub mod catalog;

@@ -12,7 +12,11 @@ impl TryFrom<SQLDataType> for DataType {
             SQLDataType::Timestamp(_, _) => Ok(Self::Timestamp),
             SQLDataType::String(_) => Ok(Self::String),
 
-            ty => Err(PlanError::Unimplemented(UnimplementedFeature::DataType {ty}))
+            ty => {
+                Err(PlanError::Unimplemented(UnimplementedFeature::DataType {
+                    ty,
+                }))
+            }
         }
     }
 }

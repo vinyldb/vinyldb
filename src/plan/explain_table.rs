@@ -10,7 +10,7 @@ pub(crate) fn convert(
             Ok(LogicalPlan::DescribeTable {
                 name: table_name.to_string(),
             })
-        },
+        }
         // SAFETY:
         // it has already been checked
         _ => unsafe { std::hint::unreachable_unchecked() },

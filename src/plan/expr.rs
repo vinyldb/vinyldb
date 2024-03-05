@@ -3,10 +3,11 @@ use super::{
     op::convert_op,
     value2data::value_to_data,
 };
-use crate::{catalog::schema::Schema, expr::Expr};
+use crate::{
+    catalog::schema::Schema, expr::Expr, plan::error::UnimplementedFeature,
+};
 use sqlparser::ast::Expr as SqlExpr;
 use std::ops::Deref;
-use crate::plan::error::UnimplementedFeature;
 
 pub fn convert_expr(_schema: &Schema, sql_expr: SqlExpr) -> PlanResult<Expr> {
     match sql_expr {
@@ -26,6 +27,8 @@ pub fn convert_expr(_schema: &Schema, sql_expr: SqlExpr) -> PlanResult<Expr> {
                 right: Box::new(right),
             })
         }
-        expr => Err(PlanError::Unimplemented(UnimplementedFeature::Expr {expr}))
+        expr => Err(PlanError::Unimplemented(UnimplementedFeature::Expr {
+            expr,
+        })),
     }
 }
