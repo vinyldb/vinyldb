@@ -1,4 +1,4 @@
-use crate::{catalog::schema::Schema, data::tuple::Tuple};
+use crate::{catalog::schema::Schema, data::tuple::Tuple, expr::Expr};
 
 #[derive(Debug)]
 pub enum LogicalPlan {
@@ -9,6 +9,10 @@ pub enum LogicalPlan {
         name: String,
         schema: Schema,
         pk: usize,
+    },
+    Filter {
+        predicate: Expr,
+        input: Box<LogicalPlan>,
     },
     TableScan {
         name: String,

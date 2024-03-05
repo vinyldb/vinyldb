@@ -6,10 +6,10 @@ use crate::{
     logical_plan::LogicalPlan,
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
-        explain::ExplainExec, insert::InsertExec, show_tables::ShowTablesExec,
-        table_scan::TableScanExec, Executor,
+        explain::ExplainExec, filter::FilterExec, insert::InsertExec,
+        show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
     },
-    plan::insert,
+    plan::{convert_expr, insert},
     storage_engine::StorageEngine,
     utils::data_dir,
 };
@@ -103,11 +103,22 @@ impl Context {
                 };
                 let name = name.to_string();
                 // check catalog
-                self.catalog.get_table(&name)?;
+                let table = self.catalog.get_table(&name)?;
+                let schema = table.schema();
 
-                Ok(LogicalPlan::TableScan {
+                let mut base = LogicalPlan::TableScan {
                     name: name.to_string(),
-                })
+                };
+
+                if let Some(expr) = &select.selection {
+                    let expr = convert_expr(schema, expr)?;
+                    base = LogicalPlan::Filter {
+                        predicate: expr,
+                        input: Box::new(base),
+                    };
+                }
+
+                Ok(base)
             }
             _ => Err(Error::NotImplemented),
         }
@@ -152,6 +163,10 @@ impl Context {
                 let table_catalog = self.catalog.get_table(name)?;
                 let schema = table_catalog.schema().clone();
                 Box::new(TableScanExec::new(name.clone(), schema))
+            }
+            LogicalPlan::Filter { predicate, input } => {
+                let input = self.create_physical_plan(input)?;
+                Box::new(FilterExec::new(predicate.clone(), input))
             }
         };
 

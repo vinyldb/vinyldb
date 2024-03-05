@@ -3,7 +3,8 @@
 use crate::{
     catalog::schema::Schema,
     data::{tuple::Tuple, types::Data},
-    error::Result,
+    error::{Error, Result},
+    plan::error::PlanError,
 };
 
 #[derive(Debug, Clone)]
@@ -45,6 +46,42 @@ impl Expr {
                     Operator::NotEq => Data::Bool(left != right),
                     Operator::Plus => left + right,
                     Operator::Minus => left - right,
+                    Operator::And => {
+                        let Data::Bool(left) = left else {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError {
+                                    expr: self.clone(),
+                                },
+                            ));
+                        };
+                        let Data::Bool(right) = right else {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError {
+                                    expr: self.clone(),
+                                },
+                            ));
+                        };
+
+                        Data::Bool(left && right)
+                    }
+                    Operator::Or => {
+                        let Data::Bool(left) = left else {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError {
+                                    expr: self.clone(),
+                                },
+                            ));
+                        };
+                        let Data::Bool(right) = right else {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError {
+                                    expr: self.clone(),
+                                },
+                            ));
+                        };
+
+                        Data::Bool(left || right)
+                    }
                 }
             }
         };
@@ -72,6 +109,10 @@ pub enum Operator {
     Plus,
     /// -
     Minus,
+    /// AND
+    And,
+    /// OR
+    Or,
 }
 
 #[cfg(test)]
