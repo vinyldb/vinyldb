@@ -1,4 +1,7 @@
-use crate::{catalog::Catalog, error::Result, logical_plan::LogicalPlan};
+use crate::{
+    catalog::Catalog, error::Result, logical_plan::LogicalPlan,
+    plan::object_name_to_table_name::object_name_to_table_name,
+};
 use sqlparser::ast::Statement;
 
 pub(crate) fn convert(
@@ -7,6 +10,7 @@ pub(crate) fn convert(
 ) -> Result<LogicalPlan> {
     match statement {
         Statement::ExplainTable { table_name, .. } => {
+            let table_name = object_name_to_table_name(table_name)?;
             Ok(LogicalPlan::DescribeTable {
                 name: table_name.to_string(),
             })

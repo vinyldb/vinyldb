@@ -4,6 +4,7 @@ use crate::{
     catalog::{schema::Schema, Catalog},
     error::Result,
     logical_plan::LogicalPlan,
+    plan::object_name_to_table_name::object_name_to_table_name,
 };
 use sqlparser::ast::Statement;
 
@@ -13,6 +14,7 @@ pub(crate) fn convert(
 ) -> Result<LogicalPlan> {
     match statement {
         Statement::CreateTable { name, columns, .. } => {
+            let name = object_name_to_table_name(name)?;
             let pk = 0;
             let mut cols = Vec::with_capacity(columns.len());
             for column in columns {

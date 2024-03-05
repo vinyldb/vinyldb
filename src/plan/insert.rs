@@ -1,40 +1,39 @@
-use super::error::{PlanError, PlanResult};
+use super::error::{PlanError, UnimplementedFeature};
 use crate::{
-    as_variant,
-    catalog::{schema::Schema, Catalog},
-    data::{
-        tuple::Tuple,
-        types::{Data, DataType},
-    },
-    error::Result,
+    catalog::Catalog,
+    error::{Error, Result},
     logical_plan::LogicalPlan,
+    plan::{
+        object_name_to_table_name::object_name_to_table_name,
+        values2tuples::values_to_tuples,
+    },
 };
-use sqlparser::ast::{Expr as SQLExpr, SetExpr, Statement, Value};
-use std::ops::Deref;
+use sqlparser::ast::{SetExpr, Statement};
 
 pub(crate) fn convert(
     catalog: &Catalog,
     statement: Statement,
 ) -> Result<LogicalPlan> {
-    match statement {
+    match statement.clone() {
         Statement::Insert {
             table_name, source, ..
         } => {
-            let table_name = table_name.to_string();
-            let source = as_variant!(Some, source);
-            let body = &source.body.deref();
-            let values = as_variant!(SetExpr::Values, body);
-            let rows = &values.rows;
-
-            let table = catalog.get_table(&table_name)?;
-            let table_scheam = table.schema();
-
-            let mut tuples = Vec::with_capacity(rows.len());
-            for row in rows {
-                let tuple = check_row(&table_name, table_scheam, row)?;
-                tuples.push(tuple);
-            }
-
+            let table_name = object_name_to_table_name(table_name)?;
+            // check catalog
+            catalog.get_table(&table_name)?;
+            let Some(source) = source else {
+                return Err(Error::PlanError(PlanError::Unimplemented(
+                    UnimplementedFeature::Statement { statement },
+                )));
+            };
+            let source = Box::into_inner(source);
+            let body = Box::into_inner(source.body);
+            let SetExpr::Values(values) = body else {
+                return Err(Error::PlanError(PlanError::Unimplemented(
+                    UnimplementedFeature::Statement { statement },
+                )));
+            };
+            let tuples = values_to_tuples(catalog, &table_name, values)?;
             Ok(LogicalPlan::Insert {
                 table: table_name,
                 rows: tuples,
@@ -44,115 +43,4 @@ pub(crate) fn convert(
         // it has already been checked
         _ => unsafe { std::hint::unreachable_unchecked() },
     }
-}
-
-fn check_column(
-    table: &str,
-    column_idx: usize,
-    datatype: &DataType,
-    value: &Value,
-) -> PlanResult<Data> {
-    match datatype {
-        DataType::Bool => {
-            let Value::Boolean(bool) = value else {
-                return Err(PlanError::MismatchedType {
-                    table: table.to_string(),
-                    column_idx,
-                    expect: *datatype,
-                });
-            };
-
-            Ok(Data::Bool(*bool))
-        }
-        DataType::Int64 => {
-            let Value::Number(num_str, _) = &value else {
-                return Err(PlanError::MismatchedType {
-                    table: table.to_string(),
-                    column_idx,
-                    expect: *datatype,
-                });
-            };
-            let num = num_str.parse::<i64>().map_err(|_| {
-                PlanError::ConversionError {
-                    val: value.clone(),
-                    to: *datatype,
-                }
-            })?;
-
-            Ok(Data::Int64(num))
-        }
-        DataType::Float64 => {
-            let Value::Number(num_str, _) = &value else {
-                return Err(PlanError::MismatchedType {
-                    table: table.to_string(),
-                    column_idx,
-                    expect: *datatype,
-                });
-            };
-            let num = num_str.parse::<f64>().map_err(|_| {
-                PlanError::ConversionError {
-                    val: value.clone(),
-                    to: *datatype,
-                }
-            })?;
-
-            Ok(Data::Float64(num))
-        }
-        DataType::Timestamp => {
-            todo!()
-        }
-        DataType::String => {
-            let str = match value {
-                Value::SingleQuotedString(str) => str,
-                Value::DollarQuotedString(dollar_quoted) => {
-                    &dollar_quoted.value
-                }
-                Value::EscapedStringLiteral(str) => str,
-                Value::SingleQuotedByteStringLiteral(str) => str,
-                Value::DoubleQuotedByteStringLiteral(str) => str,
-                Value::RawStringLiteral(str) => str,
-                Value::NationalStringLiteral(str) => str,
-                Value::HexStringLiteral(str) => str,
-                Value::DoubleQuotedString(str) => str,
-                Value::Placeholder(str) => str,
-                Value::UnQuotedString(str) => str,
-                _ => {
-                    return Err(PlanError::MismatchedType {
-                        table: table.to_string(),
-                        column_idx,
-                        expect: *datatype,
-                    });
-                }
-            };
-
-            Ok(Data::String(str.clone()))
-        }
-    }
-}
-
-fn check_row(
-    table: &str,
-    schema: &Schema,
-    row: &[SQLExpr],
-) -> PlanResult<Tuple> {
-    let n_column = schema.n_columns();
-    let row_len = row.len();
-    if n_column != row_len {
-        return Err(PlanError::MismatchedNumberColumns {
-            table: table.to_string(),
-            expect: n_column,
-            found: row_len,
-        });
-    }
-
-    let mut tuple = Vec::with_capacity(n_column);
-    let datatypes = schema.column_datatypes();
-    for (idx, (datatype, columnn)) in datatypes.zip(row.iter()).enumerate() {
-        let value = as_variant!(SQLExpr::Value, columnn);
-        let data = check_column(table, idx, datatype, value)?;
-
-        tuple.push(data);
-    }
-
-    Ok(Tuple::new(tuple))
 }

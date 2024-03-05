@@ -12,6 +12,7 @@ pub mod op;
 pub mod query;
 pub mod show_tables;
 pub mod value2data;
+pub mod values2tuples;
 
 use crate::{
     catalog::Catalog,
