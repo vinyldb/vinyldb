@@ -31,11 +31,10 @@ impl Executor for FilterExec {
         let stream = self.input.execute(ctx)?;
 
         Ok(Box::new(stream.filter(move |tuple| {
-            let res = as_variant!(
+            as_variant!(
                 Data::Bool,
                 predicate.evaluate(&schema, tuple).expect("TODO")
-            );
-            res
+            )
         })))
     }
 

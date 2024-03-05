@@ -158,11 +158,11 @@ fn value_to_data(val: Value) -> Result<Data> {
     match val {
         Value::Number(str, _) => {
             if let Ok(num) = str.parse::<i64>() {
-                return Ok(Data::Int64(num));
+                Ok(Data::Int64(num))
             } else if let Ok(num) = str.parse::<f64>() {
-                return Ok(Data::Float64(num));
+                Ok(Data::Float64(num))
             } else {
-                return Err(Error::NotImplemented);
+                Err(Error::NotImplemented)
             }
         }
         Value::SingleQuotedString(str) => Ok(Data::String(str)),
@@ -187,16 +187,17 @@ fn convert_op(op: BinaryOperator) -> Result<Operator> {
         BinaryOperator::GtEq => Ok(Operator::GtEq),
         BinaryOperator::Lt => Ok(Operator::Lt),
         BinaryOperator::LtEq => Ok(Operator::LtEq),
-        BinaryOperator::LtEq => Ok(Operator::LtEq),
         BinaryOperator::Eq => Ok(Operator::Eq),
         BinaryOperator::NotEq => Ok(Operator::NotEq),
         BinaryOperator::Plus => Ok(Operator::Plus),
         BinaryOperator::Minus => Ok(Operator::Minus),
+        BinaryOperator::And => Ok(Operator::And),
+        BinaryOperator::Or => Ok(Operator::Or),
         _ => Err(Error::NotImplemented),
     }
 }
 
-pub fn convert_expr(schema: &Schema, sql_expr: &SqlExpr) -> Result<Expr> {
+pub fn convert_expr(_schema: &Schema, sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(iden) => Ok(Expr::Column(iden.value.clone())),
         SqlExpr::Value(val) => {
@@ -204,8 +205,8 @@ pub fn convert_expr(schema: &Schema, sql_expr: &SqlExpr) -> Result<Expr> {
             Ok(Expr::Literal(data))
         }
         SqlExpr::BinaryOp { left, op, right } => {
-            let left = convert_expr(schema, left.deref())?;
-            let right = convert_expr(schema, right.deref())?;
+            let left = convert_expr(_schema, left.deref())?;
+            let right = convert_expr(_schema, right.deref())?;
             let op = convert_op(op.clone())?;
 
             Ok(Expr::BinaryExpr {

@@ -1,4 +1,4 @@
-use crate::data::types::DataType;
+use crate::{data::types::DataType, expr::Expr};
 use derive_more::{Display, Error};
 use sqlparser::ast::Value;
 
@@ -21,8 +21,10 @@ pub enum PlanError {
         expect: DataType,
         // TODO: add a found field
     },
-    #[display(fmt = "cound not convert {val} to {to}")]
+    #[display(fmt = "could not convert {val} to {to}")]
     ConversionError { val: Value, to: DataType },
+    #[display(fmt = "could not evaluate {:?}", expr)]
+    ExprEvaluationError { expr: Expr },
 }
 
 pub type PlanResult<T> = Result<T, PlanError>;
