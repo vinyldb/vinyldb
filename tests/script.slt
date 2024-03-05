@@ -175,3 +175,85 @@ select * from ids limit 4;
 1
 2
 3
+
+query
+create table proj (a string, b int64, c bool);
+----
+
+query
+insert into proj values ('1', 1, true);
+----
+
+query
+insert into proj values ('2', 2, false);
+----
+
+query
+insert into proj values ('3', 3, true);
+----
+
+query T
+explain select * from proj;
+----
+TableScanExec
+
+query T
+explain select a from proj;
+----
+ProjectionExec
+TableScanExec
+
+query T
+explain select a from proj where c = true;
+----
+ProjectionExec
+FilterExec
+TableScanExec
+
+query T
+select c from proj;
+----
+true
+false
+true
+
+query TI
+select a, b from proj;
+----
+1 1
+2 2
+3 3
+
+query I
+select b from proj;
+----
+1
+2
+3
+
+query TIB
+select a, b, c from proj;
+----
+1 1 true
+2 2 false
+3 3 true
+
+# TODO: this should not generate a ProjectionExec
+query T
+explain select a, b, c from proj;
+----
+ProjectionExec
+TableScanExec
+
+query T
+explain select c from proj where b = 1 limit 1;
+----
+ProjectionExec
+LimitExec
+FilterExec
+TableScanExec
+
+query B
+select c from proj where b = 2 limit 2;
+----
+false

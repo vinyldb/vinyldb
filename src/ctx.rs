@@ -7,8 +7,8 @@ use crate::{
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
         explain::ExplainExec, filter::FilterExec, insert::InsertExec,
-        limit::LimitExec, show_tables::ShowTablesExec,
-        table_scan::TableScanExec, Executor,
+        limit::LimitExec, projection::ProjectionExec,
+        show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
     },
     storage_engine::StorageEngine,
     utils::data_dir,
@@ -100,6 +100,18 @@ impl Context {
             LogicalPlan::Limit { fetch, input } => {
                 let input = self.create_physical_plan(input)?;
                 Box::new(LimitExec::new(*fetch, input))
+            }
+            LogicalPlan::Projection {
+                expr,
+                schema,
+                input,
+            } => {
+                let input = self.create_physical_plan(input)?;
+                Box::new(ProjectionExec::new(
+                    expr.clone(),
+                    schema.clone(),
+                    input,
+                ))
             }
         };
 

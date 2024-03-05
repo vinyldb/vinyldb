@@ -2,17 +2,22 @@
 
 use crate::{
     catalog::schema::Schema,
-    data::{tuple::Tuple, types::Data},
+    data::{
+        tuple::Tuple,
+        types::{Data, DataType},
+    },
     error::{Error, Result},
-    plan::error::PlanError,
+    plan::error::{ExprEvaluationError, PlanError},
 };
+use derive_more::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum Expr {
     /// A named column
     Column(String),
     /// A literal value
     Literal(Data),
+    #[display(fmt = "{} {} {}", left, op, right)]
     /// Binary operation.
     BinaryExpr {
         left: Box<Expr>,
@@ -36,6 +41,21 @@ impl Expr {
             Expr::BinaryExpr { left, op, right } => {
                 let left = left.evaluate(schema, data)?;
                 let right = right.evaluate(schema, data)?;
+                // Currently, all our Operators require `lhs` and `rhs` should have the same type.
+                // this may change in the future.
+                let lhs = left.datatype();
+                let rhs = right.datatype();
+                if lhs != rhs {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::DoOpOnDiffTypes {
+                                lhs,
+                                op: *op,
+                                rhs,
+                            },
+                        ),
+                    ));
+                }
 
                 match op {
                     Operator::Gt => Data::Bool(left > right),
@@ -44,21 +64,53 @@ impl Expr {
                     Operator::LtEq => Data::Bool(left <= right),
                     Operator::Eq => Data::Bool(left == right),
                     Operator::NotEq => Data::Bool(left != right),
-                    Operator::Plus => left + right,
-                    Operator::Minus => left - right,
+                    Operator::Plus => {
+                        if lhs != DataType::Int64 && lhs != DataType::Float64 {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: lhs,
+                                        op: *op,
+                                    },
+                                ),
+                            ));
+                        }
+
+                        left + right
+                    }
+                    Operator::Minus => {
+                        if lhs != DataType::Int64 && lhs != DataType::Float64 {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: lhs,
+                                        op: *op,
+                                    },
+                                ),
+                            ));
+                        }
+
+                        left - right
+                    }
                     Operator::And => {
                         let Data::Bool(left) = left else {
                             return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError {
-                                    expr: self.clone(),
-                                },
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: left.datatype(),
+                                        op: *op,
+                                    },
+                                ),
                             ));
                         };
                         let Data::Bool(right) = right else {
                             return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError {
-                                    expr: self.clone(),
-                                },
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: right.datatype(),
+                                        op: *op,
+                                    },
+                                ),
                             ));
                         };
 
@@ -67,16 +119,22 @@ impl Expr {
                     Operator::Or => {
                         let Data::Bool(left) = left else {
                             return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError {
-                                    expr: self.clone(),
-                                },
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: left.datatype(),
+                                        op: *op,
+                                    },
+                                ),
                             ));
                         };
                         let Data::Bool(right) = right else {
                             return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError {
-                                    expr: self.clone(),
-                                },
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: right.datatype(),
+                                        op: *op,
+                                    },
+                                ),
                             ));
                         };
 
@@ -95,35 +153,109 @@ impl Expr {
     /// This `Expr` must not rely on external data, e.g., tuple or schema, or this
     /// function will panic.
     pub fn evaluate_as_constant(&self) -> Data {
-        // TODO: BinaryExpr can be `
+        // TODO: BinaryExpr can be a constant.
         match self {
             Expr::Literal(data) => data.clone(),
             _ => panic!("trying to evaluate a non-constant Expr to a constant"),
         }
     }
+
+    /// Return the datatype of this `Expr`.
+    pub fn datatype(&self, schema: &Schema) -> Result<DataType> {
+        match self {
+            Expr::Column(col_name) => Ok(*schema.column_datatype(col_name)?),
+            Expr::Literal(data) => Ok(data.datatype()),
+            Expr::BinaryExpr { left, op, right } => {
+                let left_datatype = left.datatype(schema)?;
+                let right_datatype = right.datatype(schema)?;
+                // Currently, all our Operators require `lhs` and `rhs` should have the same type.
+                // this may change in the future.
+                if left_datatype != right_datatype {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::DoOpOnDiffTypes {
+                                lhs: left_datatype,
+                                op: *op,
+                                rhs: right_datatype,
+                            },
+                        ),
+                    ));
+                }
+
+                match op {
+                    Operator::Gt
+                    | Operator::GtEq
+                    | Operator::Lt
+                    | Operator::LtEq
+                    | Operator::Eq
+                    | Operator::NotEq => Ok(DataType::Bool),
+                    Operator::Plus | Operator::Minus => {
+                        if left_datatype != DataType::Int64
+                            || left_datatype != DataType::Float64
+                        {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: left_datatype,
+                                        op: *op,
+                                    },
+                                ),
+                            ));
+                        }
+
+                        Ok(left_datatype)
+                    }
+                    Operator::And | Operator::Or => {
+                        if left_datatype != DataType::Bool {
+                            return Err(Error::PlanError(
+                                PlanError::ExprEvaluationError(
+                                    ExprEvaluationError::UnsupportedTypeForOp {
+                                        datatype: left_datatype,
+                                        op: *op,
+                                    },
+                                ),
+                            ));
+                        }
+
+                        Ok(DataType::Bool)
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Operators supported by VinylDB.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Display)]
 pub enum Operator {
+    #[display(fmt = ">")]
     /// >
     Gt,
+    #[display(fmt = ">=")]
     /// >=
     GtEq,
+    #[display(fmt = ">")]
     /// <
     Lt,
+    #[display(fmt = ">=")]
     /// <=
     LtEq,
+    #[display(fmt = "=")]
     /// =
     Eq,
+    #[display(fmt = "!=")]
     /// !=
     NotEq,
+    #[display(fmt = "+")]
     /// +
     Plus,
+    #[display(fmt = "-")]
     /// -
     Minus,
+    #[display(fmt = "AND")]
     /// AND
     And,
+    #[display(fmt = "OR")]
     /// OR
     Or,
 }
@@ -131,7 +263,6 @@ pub enum Operator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::types::DataType;
     use pretty_assertions::assert_eq;
 
     fn test_schema() -> Schema {
@@ -266,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "trying to do Add with true and true")]
+    #[should_panic]
     fn plus_2_booleans() {
         let schema = test_schema();
         let tuple = test_tuple();
@@ -281,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "trying to do Sub with true and true")]
+    #[should_panic]
     fn minus_2_booleans() {
         let schema = test_schema();
         let tuple = test_tuple();
@@ -296,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "trying to do Add with steve and steve")]
+    #[should_panic]
     fn plus_2_strings() {
         let schema = test_schema();
         let tuple = test_tuple();
@@ -311,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "trying to do Sub with steve and steve")]
+    #[should_panic]
     fn minus_2_strings() {
         let schema = test_schema();
         let tuple = test_tuple();
