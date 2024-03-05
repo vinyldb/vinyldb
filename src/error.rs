@@ -11,14 +11,12 @@ use std::io::Error as IoError;
 #[derive(Debug, Display, Error, From)]
 pub enum Error {
     SqlParserError(ParserError),
-    MetaCmdError(MetaCmdError),
-    ReplError(ReadlineError),
     PlanError(PlanError),
     CatalogError(CatalogError),
+    MetaCmdError(MetaCmdError),
+    ReplError(ReadlineError),
     SledError(SledError),
     IoError(IoError),
-    #[display(fmt = "This feature has not been implemented yet")]
-    NotImplemented,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

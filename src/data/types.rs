@@ -3,7 +3,6 @@
 use crate::as_variant;
 use bytes::{Buf, BufMut};
 use derive_more::Display;
-use sqlparser::ast::DataType as SqlParserDataType;
 use std::{
     fmt::Formatter,
     ops::{Add, Sub},
@@ -18,21 +17,6 @@ pub enum DataType {
     // Timestamp since UNIX Epoch, in seconds.
     Timestamp,
     String,
-}
-
-impl TryFrom<SqlParserDataType> for DataType {
-    type Error = ();
-    fn try_from(value: SqlParserDataType) -> Result<Self, Self::Error> {
-        match value {
-            SqlParserDataType::Bool => Ok(Self::Bool),
-            SqlParserDataType::Int64 => Ok(Self::Int64),
-            SqlParserDataType::Float64 => Ok(Self::Float64),
-            SqlParserDataType::Timestamp(_, _) => Ok(Self::Timestamp),
-            SqlParserDataType::String(_) => Ok(Self::String),
-
-            ty => unimplemented!("uncovered type {}", ty),
-        }
-    }
 }
 
 impl std::fmt::Display for DataType {
