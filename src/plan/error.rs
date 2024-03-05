@@ -1,4 +1,7 @@
-use crate::{data::types::DataType, expr::Expr};
+use crate::{
+    data::types::{Data, DataType},
+    expr::Expr,
+};
 use derive_more::{Display, Error};
 use sqlparser::ast::{
     BinaryOperator, DataType as SQLDataType, Expr as SQLExpr, ObjectName,
@@ -53,6 +56,8 @@ pub enum PlanError {
     ConversionError { val: Value, to: DataType },
     #[display(fmt = "could not evaluate {:?}", expr)]
     ExprEvaluationError { expr: Expr },
+    #[display(fmt = "limit is not a unsigned integer {}", limit)]
+    NonUintLimit { limit: Data },
     #[display(fmt = "This feature has not been implemented yet: {_0}")]
     Unimplemented(UnimplementedFeature),
 }

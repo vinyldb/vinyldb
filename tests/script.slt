@@ -127,3 +127,51 @@ SELECT * FROM students WHERE name = 'steve' OR age = 2;
 ----
 mike 2
 steve 1
+
+query
+create table ids (id int64);
+----
+
+query
+insert into ids values (1);
+----
+
+query
+insert into ids values (2);
+----
+
+query
+insert into ids values (3);
+----
+
+query I
+select * from ids;
+----
+1
+2
+3
+
+query I
+select * from ids limit 1;
+----
+1
+
+query I
+select * from ids limit 2;
+----
+1
+2
+
+query I
+select * from ids limit 3;
+----
+1
+2
+3
+
+query I
+select * from ids limit 4;
+----
+1
+2
+3

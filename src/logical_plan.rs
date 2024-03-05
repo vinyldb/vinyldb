@@ -25,4 +25,10 @@ pub enum LogicalPlan {
         table: String,
         rows: Vec<Tuple>,
     },
+    Limit {
+        // TODO: impl skip
+        // skip: usize,
+        fetch: usize,
+        input: Box<LogicalPlan>,
+    },
 }

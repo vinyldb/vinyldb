@@ -3,6 +3,7 @@ pub mod describe_table;
 pub mod explain;
 pub mod filter;
 pub mod insert;
+pub mod limit;
 pub mod show_tables;
 pub mod table_scan;
 
