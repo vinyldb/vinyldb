@@ -38,7 +38,7 @@ fn run_repl(
         println!("Ast: {:?}", statement);
     }
 
-    let logical_plan = ctx.statement_to_logical_plan(&statement)?;
+    let logical_plan = ctx.statement_to_logical_plan(statement)?;
     let physical_plan = ctx.create_physical_plan(&logical_plan)?;
 
     let iter = ctx.execute(physical_plan.deref())?;

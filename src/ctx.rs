@@ -1,24 +1,18 @@
 use crate::{
-    catalog::{schema::Schema, Catalog},
+    catalog::Catalog,
     config::Config,
     data::tuple::{Tuple, TupleStream},
-    error::{Error, Result},
+    error::Result,
     logical_plan::LogicalPlan,
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
         explain::ExplainExec, filter::FilterExec, insert::InsertExec,
         show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
     },
-    plan::{convert_expr, insert},
     storage_engine::StorageEngine,
     utils::data_dir,
 };
-use sqlparser::{
-    ast::{SetExpr, Statement, TableFactor},
-    dialect::PostgreSqlDialect,
-    parser::Parser,
-};
-use std::ops::Deref;
+use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
 
 const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 
@@ -53,75 +47,9 @@ impl Context {
 
     pub fn statement_to_logical_plan(
         &self,
-        statement: &Statement,
+        statement: Statement,
     ) -> Result<LogicalPlan> {
-        match statement {
-            Statement::CreateTable { name, columns, .. } => {
-                let pk = 0;
-                let schema = Schema::new(columns.iter().map(|col| {
-                    (
-                        col.name.value.clone(),
-                        col.data_type.clone().try_into().unwrap(),
-                    )
-                }))?;
-
-                Ok(LogicalPlan::CreateTable {
-                    name: name.to_string(),
-                    schema,
-                    pk,
-                })
-            }
-            Statement::Explain { statement, .. } => {
-                let plan = Box::new(self.statement_to_logical_plan(statement)?);
-                Ok(LogicalPlan::Explain { plan })
-            }
-            Statement::ShowTables { .. } => Ok(LogicalPlan::ShowTables),
-            Statement::ExplainTable { table_name, .. } => {
-                Ok(LogicalPlan::DescribeTable {
-                    name: table_name.to_string(),
-                })
-            }
-            Statement::Insert {
-                table_name, source, ..
-            } => insert(&self.catalog, table_name, source),
-            Statement::Query(query) => {
-                let body = query.body.deref();
-                let SetExpr::Select(select) = body else {
-                    return Err(Error::NotImplemented);
-                };
-                let from = &select.from;
-                if from.len() != 1 {
-                    return Err(Error::NotImplemented);
-                }
-                let from = from.first().unwrap();
-                if !from.joins.is_empty() {
-                    return Err(Error::NotImplemented);
-                }
-                let relation = &from.relation;
-                let TableFactor::Table { name, .. } = relation else {
-                    return Err(Error::NotImplemented);
-                };
-                let name = name.to_string();
-                // check catalog
-                let table = self.catalog.get_table(&name)?;
-                let schema = table.schema();
-
-                let mut base = LogicalPlan::TableScan {
-                    name: name.to_string(),
-                };
-
-                if let Some(expr) = &select.selection {
-                    let expr = convert_expr(schema, expr)?;
-                    base = LogicalPlan::Filter {
-                        predicate: expr,
-                        input: Box::new(base),
-                    };
-                }
-
-                Ok(base)
-            }
-            _ => Err(Error::NotImplemented),
-        }
+        crate::plan::statement_to_logical_plan(&self.catalog, statement)
     }
 
     pub fn sql_to_statement<S: AsRef<str>>(&self, sql: S) -> Result<Statement> {
@@ -137,7 +65,7 @@ impl Context {
         sql: S,
     ) -> Result<LogicalPlan> {
         let statement = self.sql_to_statement(sql)?;
-        self.statement_to_logical_plan(&statement)
+        self.statement_to_logical_plan(statement)
     }
 
     pub fn create_physical_plan(
