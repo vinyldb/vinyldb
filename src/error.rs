@@ -3,7 +3,6 @@ use crate::{
     plan::error::PlanError,
 };
 use derive_more::{Display, Error, From};
-use rustyline::error::ReadlineError;
 use sled::Error as SledError;
 use sqlparser::parser::ParserError;
 use std::io::Error as IoError;
@@ -14,7 +13,6 @@ pub enum Error {
     PlanError(PlanError),
     CatalogError(CatalogError),
     MetaCmdError(MetaCmdError),
-    ReplError(ReadlineError),
     SledError(SledError),
     IoError(IoError),
 }

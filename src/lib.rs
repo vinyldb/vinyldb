@@ -16,6 +16,7 @@ pub mod logical_plan;
 pub mod meta_cmd;
 pub mod physical_plan;
 pub mod plan;
+pub mod repl;
 pub mod storage_engine;
 #[macro_use]
 pub mod utils;
