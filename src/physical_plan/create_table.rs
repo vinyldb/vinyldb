@@ -42,7 +42,7 @@ impl Executor for CreateTableExec {
         // create disk files
         ctx.storage.add_table(table_name.clone())?;
 
-        // insert it into the `.vinyl_table` table
+        // insert it into the `vinyl_table` table
         let tuple = Tuple::new([
             Data::String(table_name.clone()),
             Data::String(self.sql.clone()),
