@@ -1,0 +1,57 @@
+query T
+EXPLAIN CREATE TABLE foo;
+----
+CreateTableExec
+
+# TODO: pass this test
+#
+# query T
+# EXPLAIN DESCRIBE foo;
+# ----
+# DescribeTableExec
+
+query
+CREATE TABLE foo (name STRING, age INT64);
+----
+
+query T
+EXPLAIN INSERT INTO foo VALUES ('steve', 1);
+----
+InsertExec
+
+query T
+EXPLAIN SHOW TABLES;
+----
+ShowTablesExec
+
+query T
+EXPLAIN SELECT * FROM foo;
+----
+TableScanExec
+
+query T
+EXPLAIN SELECT * FROM foo WHERE name = 'steve';
+----
+FilterExec
+TableScanExec
+
+query T
+EXPLAIN SELECT name FROM foo;
+----
+ProjectionExec
+TableScanExec
+
+query T
+EXPLAIN SELECT name FROM foo limit 1;
+----
+ProjectionExec
+LimitExec
+TableScanExec
+
+query T
+EXPLAIN SELECT name FROM foo where age = 1 limit 1;
+----
+ProjectionExec
+LimitExec
+FilterExec
+TableScanExec

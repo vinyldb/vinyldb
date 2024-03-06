@@ -1,13 +1,11 @@
 //! VinylDB configuration
 
-#[derive(Debug, Default, Copy, Clone)]
+use camino::Utf8PathBuf;
+use derive_builder::Builder;
+
+#[derive(Debug, Clone, Builder, Default)]
 pub struct Config {
     pub show_ast: bool,
     pub timer: bool,
-}
-
-impl Config {
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub data_path: Utf8PathBuf,
 }

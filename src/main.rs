@@ -71,7 +71,7 @@ fn main() {
         repl.load_history(history).unwrap();
     }
 
-    let mut ctx = Context::new().expect("failed to create a context");
+    let mut ctx = Context::new("data").expect("failed to create a context");
 
     println!("{} {}", "VinylDB".yellow(), env!("CARGO_PKG_VERSION"));
     let mut success = true;

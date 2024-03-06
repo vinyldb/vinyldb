@@ -23,6 +23,7 @@ pub mod utils;
 mod sqllogictest;
 
 use crate::{ctx::Context, data::tuple::Tuple, error::Result};
+use camino::Utf8Path;
 use derive_more::{Deref, DerefMut};
 use std::ops::Deref;
 
@@ -32,18 +33,10 @@ use std::ops::Deref;
 #[derive(Deref, DerefMut, Debug)]
 pub struct VinylDB(Context);
 
-impl Default for VinylDB {
-    fn default() -> Self {
-        let ctx = Context::new().expect("failed to create a context");
-
-        VinylDB(ctx)
-    }
-}
-
 impl VinylDB {
     /// Create a new instance.
-    pub fn new() -> VinylDB {
-        Self::default()
+    pub fn new<P: AsRef<Utf8Path>>(data_path: P) -> VinylDB {
+        Self(Context::new(data_path).unwrap())
     }
 
     /// Execute SQL and return the result.
