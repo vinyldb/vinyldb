@@ -4,6 +4,7 @@
 #![allow(clippy::unnecessary_lazy_evaluations)]
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![feature(box_into_inner)]
+#![feature(lazy_cell)]
 
 pub mod catalog;
 pub mod config;

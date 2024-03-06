@@ -1,7 +1,10 @@
 use crate::{
     catalog::{schema::Schema, Table},
     ctx::Context,
-    data::tuple::TupleStream,
+    data::{
+        tuple::{Tuple, TupleStream},
+        types::Data,
+    },
     error::Result,
     physical_plan::Executor,
 };
@@ -11,11 +14,17 @@ pub struct CreateTableExec {
     name: String,
     schema: Schema,
     pk: usize,
+    sql: String,
 }
 
 impl CreateTableExec {
-    pub fn new(name: String, schema: Schema, pk: usize) -> Self {
-        Self { name, schema, pk }
+    pub fn new(name: String, schema: Schema, pk: usize, sql: String) -> Self {
+        Self {
+            name,
+            schema,
+            pk,
+            sql,
+        }
     }
 }
 
@@ -31,7 +40,18 @@ impl Executor for CreateTableExec {
         ctx.catalog.add_table(table)?;
 
         // create disk files
-        ctx.storage.add_table(table_name)?;
+        ctx.storage.add_table(table_name.clone())?;
+
+        // insert it into the `.vinyl_table` table
+        let tuple = Tuple::new([
+            Data::String(table_name.clone()),
+            Data::String(self.sql.clone()),
+        ]);
+        let vinyl_table_tree = ctx
+            .storage
+            .get_tree_of_table(crate::catalog::vinyl_table::TABLE_NAME)
+            .unwrap();
+        vinyl_table_tree.insert(table_name, tuple.encode())?;
 
         Ok(Box::new(std::iter::empty()))
     }

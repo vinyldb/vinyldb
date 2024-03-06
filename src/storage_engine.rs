@@ -16,6 +16,7 @@ impl StorageEngine {
         let sled_dir = sled_dir();
         std::fs::create_dir_all(sled_dir.as_path())?;
         let db = sled::open(sled_dir.as_path())?;
+        db.open_tree(crate::catalog::vinyl_table::TABLE_NAME)?;
 
         let mut trees = HashMap::new();
         for tree_name in db.tree_names() {

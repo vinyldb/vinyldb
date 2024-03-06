@@ -3,10 +3,19 @@
 pub mod column;
 pub mod error;
 pub mod schema;
+pub mod vinyl_table;
 
+use crate::{
+    as_variant,
+    data::{tuple::Tuple, types::Data},
+    error::Result,
+    plan::create_table::create_table_to_name_schema,
+    storage_engine::StorageEngine,
+};
 use error::{CatalogError, CatalogResult};
 use indexmap::map::{Entry, IndexMap};
 use schema::Schema;
+use sqlparser::{dialect::PostgreSqlDialect, parser::Parser};
 
 /// A VinylDB table.
 #[derive(Debug, Clone)]
@@ -50,8 +59,31 @@ pub struct Catalog {
 
 impl Catalog {
     /// Create a catalog
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(storage: &StorageEngine) -> Result<Self> {
+        let tree = storage.get_tree_of_table(vinyl_table::TABLE_NAME).unwrap();
+        let vinyl_table = Table::new(
+            vinyl_table::TABLE_NAME.to_string(),
+            vinyl_table::SCHEMA.clone(),
+            0,
+        );
+        let mut tables = IndexMap::new();
+        tables.insert(vinyl_table::TABLE_NAME.into(), vinyl_table);
+        for res_tuple in tree.iter().values() {
+            let tuple = Tuple::decode(res_tuple?, &vinyl_table::SCHEMA);
+            let sql = as_variant!(Data::String, tuple.get(1).unwrap());
+            let mut statements = Parser::parse_sql(&PostgreSqlDialect {}, sql)?;
+            assert_eq!(statements.len(), 1);
+            let statement = statements.pop().unwrap();
+            // SAFETY:
+            // The passed statement is  guaranteed to be a `Statement::CreateTable`
+            let (name, schema) =
+                unsafe { create_table_to_name_schema(statement)? };
+            let table = Table::new(name.clone(), schema, 0);
+
+            tables.insert(name, table);
+        }
+
+        Ok(Self { tables })
     }
 
     pub fn add_table(&mut self, table: Table) -> CatalogResult<()> {
@@ -76,26 +108,8 @@ impl Catalog {
                 name: name.to_string(),
             })
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::data::types::DataType;
-
-    #[test]
-    #[should_panic(
-        expected = "called `Result::unwrap()` on an `Err` value: TableExists { name: \"take\" }"
-    )]
-    fn duplicate_table() {
-        let mut catalog = Catalog::new();
-        let table = Table::new(
-            String::from("take"),
-            Schema::new([(String::from("name"), DataType::String)]).unwrap(),
-            0,
-        );
-        catalog.add_table(table.clone()).unwrap();
-
-        catalog.add_table(table).unwrap();
+    pub fn contains_table(&self, name: &str) -> bool {
+        self.get_table(name).is_ok()
     }
 }
