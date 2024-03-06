@@ -35,8 +35,8 @@ impl Context {
         std::fs::create_dir_all(data_dir.as_path())?;
 
         let config = Config::new();
-        let catalog = Catalog::new();
         let storage = StorageEngine::new()?;
+        let catalog = Catalog::new(&storage)?;
         let ctx = Self {
             config,
             catalog,
@@ -74,9 +74,17 @@ impl Context {
         logical_plan: &LogicalPlan,
     ) -> Result<Box<dyn Executor>> {
         let plan: Box<dyn Executor> = match logical_plan {
-            LogicalPlan::CreateTable { name, schema, pk } => Box::new(
-                CreateTableExec::new(name.clone(), schema.clone(), *pk),
-            ),
+            LogicalPlan::CreateTable {
+                name,
+                schema,
+                pk,
+                sql,
+            } => Box::new(CreateTableExec::new(
+                name.clone(),
+                schema.clone(),
+                *pk,
+                sql.clone(),
+            )),
             LogicalPlan::Explain { plan } => {
                 let plan = self.create_physical_plan(plan)?;
                 Box::new(ExplainExec::new(plan))

@@ -9,6 +9,7 @@ pub enum LogicalPlan {
         name: String,
         schema: Schema,
         pk: usize,
+        sql: String,
     },
     Filter {
         predicate: Expr,

@@ -21,6 +21,9 @@ impl Executor for ShowTablesExec {
         let tables = ctx.catalog.tables();
         let iter = tables
             .iter()
+            .filter(|(name, _)| {
+                name != &crate::catalog::vinyl_table::TABLE_NAME
+            })
             .map(|(name, _)| Tuple::new([Data::String(name.to_owned())]))
             .collect::<Vec<_>>();
 
