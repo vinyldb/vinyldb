@@ -18,3 +18,7 @@ strum = "0.26.1"
 strum_macros = "0.26.1"
 sqllogictest = "0.19.1"
 bytemuck = "1.14.3"
+derive_builder = "0.20.0"
+
+[dev-dependencies]
+camino-tempfile = "1"

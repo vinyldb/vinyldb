@@ -1,0 +1,33 @@
+query T
+insert into table foo values (1);
+----
+Table with name 'foo' does not exist
+
+query
+create table foo (a bool, b int64, c float64, d string);
+----
+
+query
+insert into table foo values (true, 1, 1.0, '1');
+----
+
+query
+insert into table foo values (false, 2, 2.0, '2');
+----
+
+query BIFT
+select * from foo;
+----
+false 2 2 2
+true 1 1 1
+
+query T
+insert into table foo values (1);
+----
+table foo has 4 columns but 1 columns were supplied
+
+
+query T
+insert into table foo values (1, 1, 1, 1);
+----
+the data type of 0th column of table foo should be BOOL but found INT64

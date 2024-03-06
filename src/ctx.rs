@@ -1,6 +1,6 @@
 use crate::{
     catalog::Catalog,
-    config::Config,
+    config::{Config, ConfigBuilder},
     data::tuple::{Tuple, TupleStream},
     error::Result,
     logical_plan::LogicalPlan,
@@ -11,8 +11,8 @@ use crate::{
         show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
     },
     storage_engine::StorageEngine,
-    utils::data_dir,
 };
+use camino::Utf8Path;
 use sqlparser::{ast::Statement, dialect::PostgreSqlDialect, parser::Parser};
 
 const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
@@ -30,12 +30,17 @@ pub struct Context {
 
 impl Context {
     /// Create a new [`Context`].
-    pub fn new() -> Result<Self> {
-        let data_dir = data_dir();
-        std::fs::create_dir_all(data_dir.as_path())?;
+    pub fn new<P: AsRef<Utf8Path>>(data_path: P) -> Result<Self> {
+        let data_path = data_path.as_ref().to_path_buf();
+        std::fs::create_dir_all(&data_path)?;
 
-        let config = Config::new();
-        let storage = StorageEngine::new()?;
+        let config = ConfigBuilder::default()
+            .show_ast(false)
+            .timer(true)
+            .data_path(data_path)
+            .build()
+            .unwrap();
+        let storage = StorageEngine::new(&config)?;
         let catalog = Catalog::new(&storage)?;
         let ctx = Self {
             config,

@@ -1,0 +1,13 @@
+query
+create table foo;
+----
+
+query T
+create table foo;
+----
+Table with name 'foo' already exists
+
+query T
+select name from vinyl_table;
+----
+foo

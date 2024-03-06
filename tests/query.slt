@@ -1,0 +1,168 @@
+query T
+select * from foo;
+----
+Table with name 'foo' does not exist
+
+query
+create table foo (a int64, b bool, c float64, d string);
+----
+
+query
+insert into table foo values (1, true, 1.0, '1');
+----
+
+query
+insert into table foo values (2, false, 2.0, '2');
+----
+
+query
+insert into table foo values (3, true, 3.0, '3');
+----
+
+query
+select * from foo;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+#------------------------------------------------------------------ With filter
+query
+select * from foo where a = 1;
+----
+1 true 1 1
+
+query
+select * from foo where b = true;
+----
+1 true 1 1
+3 true 3 3
+
+query
+select * from foo where a >= 0;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+query
+select * from foo where a >= 0 and true and false;
+----
+
+query
+select * from foo where a != 2 and b = true;
+----
+1 true 1 1
+3 true 3 3
+
+query
+select * from foo where 1+1>1;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+query
+select * from foo where b;
+----
+1 true 1 1
+3 true 3 3
+
+#------------------------------------------------------------------ With limit
+query
+select * from foo limit 0;
+----
+
+query
+select * from foo limit 1;
+----
+1 true 1 1
+
+query
+select * from foo limit 2;
+----
+1 true 1 1
+2 false 2 2
+
+query
+select * from foo limit 3;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+query
+select * from foo limit 4;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+#------------------------------------------------------------------ With projection
+query
+select a from foo;
+----
+1
+2
+3
+
+query
+select b from foo;
+----
+true
+false
+true
+
+query
+select c from foo;
+----
+1
+2
+3
+
+query
+select d from foo;
+----
+1
+2
+3
+
+query
+select a, b from foo;
+----
+1 true
+2 false
+3 true
+
+query
+select a, b, c from foo;
+----
+1 true 1
+2 false 2
+3 true 3
+
+query
+select a, b, c, d from foo;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+#------------------------------------------------------------------ With filter and limit
+query
+select * from foo where b limit 1;
+----
+1 true 1 1
+
+#------------------------------------------------------------------ With filter and projection
+query
+select a from foo where b;
+----
+1
+3
+
+#------------------------------------------------------------------ With filter/limit/projection
+query
+select a,b from foo where b limit 1;
+----
+1 true

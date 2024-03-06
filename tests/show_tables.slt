@@ -1,0 +1,22 @@
+query
+show tables;
+----
+
+query
+create table foo;
+----
+
+query
+show tables;
+----
+foo
+
+query
+create table bar;
+----
+
+query
+show tables;
+----
+foo
+bar

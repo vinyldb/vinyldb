@@ -1,0 +1,21 @@
+query T
+describe foo;
+----
+Table with name 'foo' does not exist
+
+query TTTT
+create table foo (a bool, b int64, c float64, d string)
+----
+
+query T
+describe foo;
+----
+a BOOL YES YES
+b INT64 YES NO
+c FLOAT64 YES NO
+d STRING YES NO
+
+query T
+describe bar;
+----
+Table with name 'bar' does not exist

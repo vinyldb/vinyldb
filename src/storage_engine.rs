@@ -1,4 +1,4 @@
-use crate::{catalog::error::CatalogError, error::Result, utils::sled_dir};
+use crate::{catalog::error::CatalogError, config::Config, error::Result};
 use sled::{Db, Tree};
 use std::collections::{hash_map::Entry, HashMap};
 
@@ -12,8 +12,9 @@ impl StorageEngine {
     /// Create a new [`StorageEngine`].
     ///
     /// State will be automatically restored according to the disk files.
-    pub fn new() -> Result<Self> {
-        let sled_dir = sled_dir();
+    pub fn new(cfg: &Config) -> Result<Self> {
+        let data_dir = cfg.data_path.as_path();
+        let sled_dir = data_dir.join("sled");
         std::fs::create_dir_all(sled_dir.as_path())?;
         let db = sled::open(sled_dir.as_path())?;
         db.open_tree(crate::catalog::vinyl_table::TABLE_NAME)?;
