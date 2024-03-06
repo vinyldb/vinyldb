@@ -5,7 +5,7 @@ use rustyline::{
     history::DefaultHistory,
     ColorMode, EditMode, Editor,
 };
-use std::{ops::Deref, time::SystemTime};
+use std::{ops::Deref, path::Path, time::SystemTime};
 use vinyldb::{
     ctx::Context,
     error::{Error, Result},
@@ -15,9 +15,11 @@ use vinyldb::{
 fn run_repl(
     repl: &mut Editor<(), DefaultHistory>,
     ctx: &mut Context,
+    succeed: bool,
 ) -> Result<()> {
+    let prompt = if succeed { "V ".green() } else { "V ".red() };
     let line = repl
-        .readline(&format!("{}", "V ".green()))
+        .readline(&prompt.to_string())
         .map_err(Error::ReplError)?;
     if line.is_empty() {
         return Ok(());
@@ -55,6 +57,7 @@ fn run_repl(
 }
 
 fn main() {
+    let history = Path::new(".vinyldb_history");
     let repl_cfg = Builder::new()
         .auto_add_history(true)
         .edit_mode(EditMode::Emacs)
@@ -63,17 +66,31 @@ fn main() {
         .build();
     let mut repl: Editor<(), DefaultHistory> =
         Editor::with_config(repl_cfg).unwrap();
+
+    if history.exists() {
+        repl.load_history(history).unwrap();
+    }
+
     let mut ctx = Context::new().expect("failed to create a context");
 
     println!("{} {}", "VinylDB".yellow(), env!("CARGO_PKG_VERSION"));
+    let mut success = true;
     loop {
-        if let Err(e) = run_repl(&mut repl, &mut ctx) {
+        if let Err(e) = run_repl(&mut repl, &mut ctx, success) {
             match e {
-                Error::ReplError(ReadlineError::Eof) => std::process::exit(0),
+                Error::ReplError(ReadlineError::Eof) => {
+                    repl.save_history(history).unwrap();
+                    std::process::exit(0);
+                }
                 Error::ReplError(ReadlineError::Interrupted) => continue,
 
-                e => eprintln!("Error: {}", e),
+                e => {
+                    success = false;
+                    eprintln!("Error: {}", e);
+                }
             }
+        } else {
+            success = true;
         }
     }
 }
