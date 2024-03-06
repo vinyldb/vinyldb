@@ -74,9 +74,9 @@ fn main() {
     let mut ctx = Context::new().expect("failed to create a context");
 
     println!("{} {}", "VinylDB".yellow(), env!("CARGO_PKG_VERSION"));
-    let mut succeed = true;
+    let mut success = true;
     loop {
-        if let Err(e) = run_repl(&mut repl, &mut ctx, succeed) {
+        if let Err(e) = run_repl(&mut repl, &mut ctx, success) {
             match e {
                 Error::ReplError(ReadlineError::Eof) => {
                     repl.save_history(history).unwrap();
@@ -85,12 +85,12 @@ fn main() {
                 Error::ReplError(ReadlineError::Interrupted) => continue,
 
                 e => {
-                    succeed = false;
+                    success = false;
                     eprintln!("Error: {}", e);
                 }
             }
         } else {
-            succeed = true;
+            success = true;
         }
     }
 }
