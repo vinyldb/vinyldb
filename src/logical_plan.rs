@@ -1,4 +1,5 @@
 use crate::{catalog::schema::Schema, data::tuple::Tuple, expr::Expr};
+use std::num::NonZeroUsize;
 
 #[derive(Debug)]
 pub enum LogicalPlan {
@@ -27,9 +28,8 @@ pub enum LogicalPlan {
         rows: Vec<Tuple>,
     },
     Limit {
-        // TODO: impl skip
-        // skip: usize,
-        fetch: usize,
+        offset: Option<NonZeroUsize>,
+        limit: Option<usize>,
         input: Box<LogicalPlan>,
     },
     Projection {

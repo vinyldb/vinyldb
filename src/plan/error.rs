@@ -78,8 +78,11 @@ pub enum PlanError {
     ConversionError { val: Value, to: DataType },
     #[display(fmt = "could not evaluate {_0}")]
     ExprEvaluationError(ExprEvaluationError),
-    #[display(fmt = "limit is not a unsigned integer {}", limit)]
-    NonUintLimit { limit: Data },
+    #[display(
+        fmt = "limit/offset should be able to be evaluated to an unsigned constant {}",
+        expr
+    )]
+    NonUintLimitOffset { expr: Data },
     #[display(fmt = "This feature has not been implemented yet: {_0}")]
     Unimplemented(UnimplementedFeature),
 }
