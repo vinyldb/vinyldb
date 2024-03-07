@@ -1,13 +1,13 @@
-pub mod highlighter;
+pub mod prompt;
 
 use crate::{ctx::Context, error::Result, meta_cmd::MetaCmd};
 use colored::Colorize;
-use highlighter::SQLKeywordHighlighter;
+use prompt::VinylPrompt;
+use reedline_sql_highlighter::SQLKeywordHighlighter;
 use std::{ops::Deref, path::PathBuf, time::SystemTime};
 
 use reedline::{
-    CursorConfig, DefaultHinter, DefaultPrompt, DefaultPromptSegment, Emacs,
-    FileBackedHistory, Reedline, Signal,
+    CursorConfig, DefaultHinter, Emacs, FileBackedHistory, Reedline, Signal,
 };
 
 pub fn run_repl(
@@ -15,14 +15,7 @@ pub fn run_repl(
     ctx: &mut Context,
     success: bool,
 ) -> Result<()> {
-    let prompt = DefaultPrompt::new(
-        DefaultPromptSegment::Basic(if success {
-            "V ".green().to_string()
-        } else {
-            "V ".red().to_string()
-        }),
-        DefaultPromptSegment::Empty,
-    );
+    let prompt = VinylPrompt::new(success);
     let line = repl.read_line(&prompt)?;
     let line = match line {
         Signal::Success(line) => line,
@@ -36,7 +29,7 @@ pub fn run_repl(
     // this is a meta command
     if line.starts_with('.') {
         let meta_cmd = line.parse::<MetaCmd>()?;
-        meta_cmd.execute(ctx).unwrap();
+        meta_cmd.execute(ctx)?;
 
         return Ok(());
     }
