@@ -26,15 +26,15 @@ impl Executor for TableScanExec {
     fn execute(&self, ctx: &mut Context) -> Result<TupleStream> {
         let storage_engine = &ctx.storage;
         let tree = storage_engine.get_tree_of_table(&self.table)?;
-        let mut tuples = Vec::with_capacity(tree.len());
-        for res_item in tree {
-            let (_, raw_tuple) = res_item?;
-            let tuple = Tuple::decode(&raw_tuple, &self.schema);
+        let schema = self.schema.clone();
 
-            tuples.push(tuple);
-        }
+        let iter = tree
+            .iter()
+            .values()
+            .map(|res_data| res_data.unwrap())
+            .map(move |data| Tuple::decode(&data, &schema));
 
-        Ok(Box::new(tuples.into_iter()))
+        Ok(Box::new(iter))
     }
 
     fn next(&self) -> Option<&dyn Executor> {
