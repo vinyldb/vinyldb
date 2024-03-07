@@ -98,6 +98,54 @@ select * from foo limit 4;
 2 false 2 2
 3 true 3 3
 
+query
+select * from foo offset 0;
+----
+1 true 1 1
+2 false 2 2
+3 true 3 3
+
+query
+select * from foo offset 1;
+----
+2 false 2 2
+3 true 3 3
+
+query
+select * from foo offset 2;
+----
+3 true 3 3
+
+query
+select * from foo offset 3;
+----
+
+query
+select * from foo offset 4;
+----
+
+# TODO: this should return an error: "limit/offset should be able to be evaluated to an unsigned constant"
+query T
+select * from foo offset -1;
+----
+This feature has not been implemented yet: Unsupported SQL Expr -1
+
+query
+select * from foo offset 0 limit 1;
+----
+1 true 1 1
+
+query
+select * from foo offset 1 limit 1;
+----
+2 false 2 2
+
+query
+select * from foo offset 1 limit 10;
+----
+2 false 2 2
+3 true 3 3
+
 #------------------------------------------------------------------ With projection
 query
 select a from foo;
