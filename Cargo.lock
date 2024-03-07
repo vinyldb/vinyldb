@@ -1395,7 +1395,6 @@ dependencies = [
  "derive_more",
  "indexmap",
  "log",
- "nu-ansi-term",
  "pretty_assertions",
  "reedline",
  "reedline_sql_highlighter",
