@@ -55,3 +55,20 @@ ProjectionExec
 LimitExec
 FilterExec
 TableScanExec
+
+query T
+EXPLAIN SELECT * FROM foo OFFSET 0;
+----
+TableScanExec
+
+query T
+EXPLAIN SELECT * FROM foo OFFSET 1;
+----
+LimitExec
+TableScanExec
+
+query T
+EXPLAIN SELECT * FROM foo OFFSET 1 LIMIT 1;
+----
+LimitExec
+TableScanExec
