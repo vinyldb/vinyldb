@@ -110,9 +110,13 @@ impl Context {
                 let input = self.create_physical_plan(input)?;
                 Box::new(FilterExec::new(predicate.clone(), input))
             }
-            LogicalPlan::Limit { fetch, input } => {
+            LogicalPlan::Limit {
+                offset,
+                limit,
+                input,
+            } => {
                 let input = self.create_physical_plan(input)?;
-                Box::new(LimitExec::new(*fetch, input))
+                Box::new(LimitExec::new(*offset, *limit, input))
             }
             LogicalPlan::Projection {
                 expr,

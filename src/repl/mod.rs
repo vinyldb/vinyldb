@@ -68,7 +68,7 @@ pub fn start() {
     let mut repl = Reedline::create()
         .with_history(Box::new(history))
         .with_highlighter(Box::new(SQLKeywordHighlighter::new()))
-        .with_hinter(Box::new(DefaultHinter::default()))
+        .with_hinter(Box::<DefaultHinter>::default())
         .with_edit_mode(Box::<Emacs>::default())
         .with_cursor_config(cursor_cfg)
         .with_ansi_colors(true);

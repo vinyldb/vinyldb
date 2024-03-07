@@ -10,7 +10,40 @@ use crate::{
     logical_plan::LogicalPlan,
     plan::object_name_to_table_name::object_name_to_table_name,
 };
-use sqlparser::ast::{SelectItem, SetExpr, Statement, TableFactor};
+use sqlparser::ast::{
+    Expr as SQLExpr, SelectItem, SetExpr, Statement, TableFactor,
+};
+use std::num::NonZeroUsize;
+
+fn evaluate_limit(expr: SQLExpr, input_schema: &Schema) -> Result<usize> {
+    let expr = convert_expr(input_schema, expr)?;
+    let data = expr.evaluate_as_constant();
+    let Data::Int64(limit) = data else {
+        return Err(Error::PlanError(PlanError::NonUintLimitOffset {
+            expr: data,
+        }));
+    };
+
+    let limit: usize = limit.try_into().map_err(|_| {
+        Error::PlanError(PlanError::NonUintLimitOffset { expr: data })
+    })?;
+
+    Ok(limit)
+}
+
+fn evaluate_offset(
+    expr: SQLExpr,
+    input_schema: &Schema,
+) -> Result<Option<NonZeroUsize>> {
+    let offset = evaluate_limit(expr, input_schema)?;
+    let offset = match offset {
+        0 => None,
+        // SAFETY: it won't be 0
+        non_zero => Some(unsafe { NonZeroUsize::new_unchecked(non_zero) }),
+    };
+
+    Ok(offset)
+}
 
 pub(crate) fn convert(
     catalog: &Catalog,
@@ -58,23 +91,36 @@ pub(crate) fn convert(
                 };
             }
 
-            if let Some(limit) = query.limit {
-                let expr = convert_expr(schema, limit)?;
-                let data = expr.evaluate_as_constant();
-                let Data::Int64(limit) = data else {
-                    return Err(Error::PlanError(PlanError::NonUintLimit {
-                        limit: data,
-                    }));
-                };
+            match (query.limit, query.offset) {
+                (Some(limit), Some(offset)) => {
+                    let limit = Some(evaluate_limit(limit, schema)?);
+                    let offset = evaluate_offset(offset.value, schema)?;
 
-                let limit: usize = limit.try_into().map_err(|_| {
-                    Error::PlanError(PlanError::NonUintLimit { limit: data })
-                })?;
-
-                base = LogicalPlan::Limit {
-                    fetch: limit,
-                    input: Box::new(base),
+                    base = LogicalPlan::Limit {
+                        offset,
+                        limit,
+                        input: Box::new(base),
+                    }
                 }
+                (Some(limit), None) => {
+                    let limit = Some(evaluate_limit(limit, schema)?);
+                    base = LogicalPlan::Limit {
+                        offset: None,
+                        limit,
+                        input: Box::new(base),
+                    }
+                }
+                (None, Some(offset)) => {
+                    let offset = evaluate_offset(offset.value, schema)?;
+                    if offset.is_some() {
+                        base = LogicalPlan::Limit {
+                            offset,
+                            limit: None,
+                            input: Box::new(base),
+                        }
+                    }
+                }
+                (None, None) => { /*do nothing*/ }
             }
 
             let projs = select.projection;
