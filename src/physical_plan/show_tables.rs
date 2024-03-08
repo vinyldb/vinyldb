@@ -14,7 +14,11 @@ pub struct ShowTablesExec;
 
 impl Executor for ShowTablesExec {
     fn schema(&self) -> Schema {
-        Schema::new([(String::from("name"), DataType::String)]).unwrap()
+        Schema::new_with_duplicate_check([(
+            String::from("name"),
+            DataType::String,
+        )])
+        .unwrap()
     }
 
     fn execute(&self, ctx: &mut Context) -> Result<TupleStream> {

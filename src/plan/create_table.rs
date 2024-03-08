@@ -26,7 +26,7 @@ pub(crate) unsafe fn create_table_to_name_schema(
             for column in columns {
                 cols.push((column.name.value, column.data_type.try_into()?));
             }
-            let schema = Schema::new(cols)?;
+            let schema = Schema::new_with_duplicate_check(cols)?;
 
             Ok((name, schema))
         }
@@ -51,7 +51,7 @@ pub(crate) fn convert(
             for column in columns {
                 cols.push((column.name.value, column.data_type.try_into()?));
             }
-            let schema = Schema::new(cols)?;
+            let schema = Schema::new_with_duplicate_check(cols)?;
 
             Ok(LogicalPlan::CreateTable {
                 name: name.to_string(),

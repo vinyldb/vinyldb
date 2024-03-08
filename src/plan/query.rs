@@ -17,7 +17,8 @@ use std::num::NonZeroUsize;
 
 fn evaluate_limit(expr: SQLExpr, input_schema: &Schema) -> Result<usize> {
     let expr = convert_expr(input_schema, expr)?;
-    let data = expr.evaluate_as_constant();
+    assert!(expr.is_constant());
+    let data = expr.evaluate_constant_expr().unwrap();
     let Data::Int64(limit) = data else {
         return Err(Error::PlanError(PlanError::NonUintLimitOffset {
             expr: data,
@@ -125,63 +126,45 @@ pub(crate) fn convert(
 
             let projs = select.projection;
             assert!(!projs.is_empty());
-            let need_a_projection_logical_plan = !(projs.len() == 1
-                && matches!(projs[0], SelectItem::Wildcard(_)));
-            if need_a_projection_logical_plan {
-                let mut exprs: Vec<Expr> = Vec::new();
-                let mut columns: Vec<(String, DataType)> = Vec::new();
-                for proj in projs {
-                    match proj {
-                        SelectItem::UnnamedExpr(expr) => {
-                            let expr = convert_expr(schema, expr)?;
-                            let Expr::Column(column) = &expr else {
-                                return Err(Error::PlanError(PlanError::Unimplemented(UnimplementedFeature::ProjectionWithNonColumnExpr {
-                                    expr,
-                                })));
-                            };
-                            let column_datatype =
-                                schema.column_datatype(column)?;
-                            columns.push((column.clone(), *column_datatype));
-                            exprs.push(expr);
-                        }
-                        SelectItem::ExprWithAlias { .. } => {
-                            return Err(Error::PlanError(
-                                PlanError::Unimplemented(
-                                    UnimplementedFeature::ProjectionWithAlias {
-                                        select_item: proj,
-                                    },
-                                ),
-                            ));
-                        }
-                        SelectItem::QualifiedWildcard(_, _) => {
-                            return Err(Error::PlanError(
-                                PlanError::Unimplemented(
-                                    UnimplementedFeature::ProjectionQualifiedWildcard {
-                                        select_item: proj,
-                                    },
-                                ),
-                            ));
-                        }
-                        SelectItem::Wildcard(_) => {
-                            columns.extend(schema.columns().map(
-                                |(name, datatype)| (name.clone(), *datatype),
-                            ));
-                            exprs.extend(
-                                schema
-                                    .column_names()
-                                    .map(|name| Expr::Column(name.to_string())),
-                            );
-                        }
+
+            let mut exprs: Vec<Expr> = Vec::new();
+            let mut columns: Vec<(String, DataType)> = Vec::new();
+            for proj in projs {
+                match proj {
+                    SelectItem::UnnamedExpr(expr) => {
+                        let expr = convert_expr(schema, expr)?;
+                        columns
+                            .push((expr.to_string(), expr.datatype(schema)?));
+                        exprs.push(expr);
+                    }
+                    SelectItem::ExprWithAlias { expr, alias } => {
+                        let expr = convert_expr(schema, expr)?;
+                        columns.push((alias.value, expr.datatype(schema)?));
+                        exprs.push(expr);
+                    }
+                    // treat `QualifiedWildcard` like `Wildcard` because we don't support databases.
+                    SelectItem::QualifiedWildcard(_, _)
+                    | SelectItem::Wildcard(_) => {
+                        exprs.extend(
+                            schema
+                                .column_names()
+                                .map(|name| Expr::Column(name.to_string())),
+                        );
+                        columns.extend(
+                            schema.columns().map(|(name, datatype)| {
+                                (name.clone(), *datatype)
+                            }),
+                        );
                     }
                 }
-
-                let schema = Schema::new(columns)?;
-                base = LogicalPlan::Projection {
-                    expr: exprs,
-                    schema,
-                    input: Box::new(base),
-                };
             }
+
+            let schema = Schema::new(columns);
+            base = LogicalPlan::Projection {
+                expr: exprs,
+                schema,
+                input: Box::new(base),
+            };
 
             Ok(base)
         }

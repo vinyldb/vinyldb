@@ -10,7 +10,14 @@ pub struct Schema {
 
 impl Schema {
     /// Create a new [`Schema`].
-    pub fn new(
+    pub fn new(fields: impl IntoIterator<Item = (String, DataType)>) -> Self {
+        Schema {
+            columns: fields.into_iter().collect(),
+        }
+    }
+
+    /// Create a new [`Schema`], with duplicate columns check enabled.
+    pub fn new_with_duplicate_check(
         fields: impl IntoIterator<Item = (String, DataType)>,
     ) -> CatalogResult<Self> {
         let mut ret = IndexMap::new();
@@ -80,7 +87,7 @@ mod tests {
             (String::from("name"), DataType::String),
             (String::from("age"), DataType::Int64),
         ];
-        let schema = Schema::new(fields.clone()).unwrap();
+        let schema = Schema::new_with_duplicate_check(fields.clone()).unwrap();
 
         assert_eq!(
             schema.columns,
@@ -97,6 +104,6 @@ mod tests {
             (String::from("name"), DataType::String),
             (String::from("name"), DataType::Int64),
         ];
-        let _schema = Schema::new(fields).unwrap();
+        let _schema = Schema::new_with_duplicate_check(fields).unwrap();
     }
 }

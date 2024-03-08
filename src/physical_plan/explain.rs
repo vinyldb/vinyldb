@@ -23,8 +23,11 @@ impl ExplainExec {
 
 impl Executor for ExplainExec {
     fn schema(&self) -> Schema {
-        Schema::new([(String::from("Physical Plan"), DataType::String)])
-            .expect("should never fail")
+        Schema::new_with_duplicate_check([(
+            String::from("Physical Plan"),
+            DataType::String,
+        )])
+        .expect("should never fail")
     }
 
     fn execute(&self, _ctx: &mut Context) -> Result<TupleStream> {
