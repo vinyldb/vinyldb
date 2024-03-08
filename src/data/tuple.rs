@@ -25,6 +25,10 @@ impl Tuple {
         Self(data.into_iter().collect())
     }
 
+    pub fn empty() -> Self {
+        Self(vec![])
+    }
+
     pub fn get(&self, idx: usize) -> Option<&Data> {
         self.0.get(idx)
     }

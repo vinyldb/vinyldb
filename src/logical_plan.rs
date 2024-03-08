@@ -3,6 +3,8 @@ use std::num::NonZeroUsize;
 
 #[derive(Debug)]
 pub enum LogicalPlan {
+    /// A dummy table to implement `SELECT` without `FROM`.
+    OneRowPlaceholder,
     Explain {
         plan: Box<LogicalPlan>,
     },
