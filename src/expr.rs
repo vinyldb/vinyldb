@@ -27,136 +27,75 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// Figuring out if this `Expr` is a constant, or can be evaluated as a constant.
+    ///
+    /// An `Expr` is a constant as long as it does not involve `Column`s
+    pub fn is_constant(&self) -> bool {
+        match self {
+            Expr::Literal(_) => true,
+            // TODO: handle the cases where short-circuit may happen
+            //
+            // I think we can have short-circuit here, say op is `Operator::Or`,
+            // then left is a constant and can be evaluated to `Expr::Literal(true)`,
+            // then `true Or anything` will be true, i.e., a constant.
+            Expr::BinaryExpr { left, right, .. } => {
+                left.is_constant() && right.is_constant()
+            }
+
+            _ => false,
+        }
+    }
+
     /// Evaluate `self` against every row in `data`.
     ///
     /// # NOTE
     /// All the tuples in `data` should have schema `schema`.
     pub fn evaluate(&self, schema: &Schema, data: &Tuple) -> Result<Data> {
-        let ret = match self {
+        match self {
             Expr::Column(col_name) => {
                 let idx = schema.index_of_column(col_name)?;
-                data.get(idx).expect("schema error").clone()
+                Ok(data.get(idx).expect("schema error").clone())
             }
-            Expr::Literal(literal) => literal.clone(),
+            Expr::Literal(literal) => Ok(literal.clone()),
             Expr::BinaryExpr { left, op, right } => {
                 let left = left.evaluate(schema, data)?;
                 let right = right.evaluate(schema, data)?;
-                // Currently, all our Operators require `lhs` and `rhs` should have the same type.
-                // this may change in the future.
-                let lhs = left.datatype();
-                let rhs = right.datatype();
-                if lhs != rhs {
-                    return Err(Error::PlanError(
-                        PlanError::ExprEvaluationError(
-                            ExprEvaluationError::DoOpOnDiffTypes {
-                                lhs,
-                                op: *op,
-                                rhs,
-                            },
-                        ),
-                    ));
-                }
-
-                match op {
-                    Operator::Gt => Data::Bool(left > right),
-                    Operator::GtEq => Data::Bool(left >= right),
-                    Operator::Lt => Data::Bool(left < right),
-                    Operator::LtEq => Data::Bool(left <= right),
-                    Operator::Eq => Data::Bool(left == right),
-                    Operator::NotEq => Data::Bool(left != right),
-                    Operator::Plus => {
-                        if lhs != DataType::Int64 && lhs != DataType::Float64 {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: lhs,
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        }
-
-                        left + right
-                    }
-                    Operator::Minus => {
-                        if lhs != DataType::Int64 && lhs != DataType::Float64 {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: lhs,
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        }
-
-                        left - right
-                    }
-                    Operator::And => {
-                        let Data::Bool(left) = left else {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: left.datatype(),
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        };
-                        let Data::Bool(right) = right else {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: right.datatype(),
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        };
-
-                        Data::Bool(left && right)
-                    }
-                    Operator::Or => {
-                        let Data::Bool(left) = left else {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: left.datatype(),
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        };
-                        let Data::Bool(right) = right else {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: right.datatype(),
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        };
-
-                        Data::Bool(left || right)
-                    }
-                }
+                op.operate(left, right)
             }
-        };
-
-        Ok(ret)
+        }
     }
 
-    /// Evaluate this `Expr` to a constant
+    /// Evaluate `Expr`s, in batch.
+    pub fn evaluate_batch(
+        exprs: &[Expr],
+        schema: &Schema,
+        data: &Tuple,
+    ) -> Result<Vec<Data>> {
+        let mut result = Vec::with_capacity(exprs.len());
+        for expr in exprs {
+            let res = expr.evaluate(schema, data)?;
+            result.push(res);
+        }
+        Ok(result)
+    }
+
+    /// Evaluate this `Expr` to a constant.
     ///
-    /// # NOTE
-    /// This `Expr` must not rely on external data, e.g., tuple or schema, or this
-    /// function will panic.
-    pub fn evaluate_as_constant(&self) -> Data {
-        // TODO: BinaryExpr can be a constant.
+    /// An error will be returned if `self` is not constant.
+    pub fn evaluate_constant_expr(&self) -> Result<Data> {
         match self {
-            Expr::Literal(data) => data.clone(),
-            _ => panic!("trying to evaluate a non-constant Expr to a constant"),
+            Expr::Literal(data) => Ok(data.clone()),
+            Expr::BinaryExpr { left, op, right } => {
+                let left = left.evaluate_constant_expr()?;
+                // TODO: handle short-circuit
+                let right = right.evaluate_constant_expr()?;
+                let data = op.operate(left, right)?;
+
+                Ok(data)
+            }
+            _ => Err(Error::PlanError(PlanError::ExprEvaluationError(
+                ExprEvaluationError::ExprIsNotConstant { expr: self.clone() },
+            ))),
         }
     }
 
@@ -168,59 +107,32 @@ impl Expr {
             Expr::BinaryExpr { left, op, right } => {
                 let left_datatype = left.datatype(schema)?;
                 let right_datatype = right.datatype(schema)?;
-                // Currently, all our Operators require `lhs` and `rhs` should have the same type.
-                // this may change in the future.
-                if left_datatype != right_datatype {
-                    return Err(Error::PlanError(
-                        PlanError::ExprEvaluationError(
-                            ExprEvaluationError::DoOpOnDiffTypes {
-                                lhs: left_datatype,
-                                op: *op,
-                                rhs: right_datatype,
-                            },
-                        ),
-                    ));
-                }
 
-                match op {
-                    Operator::Gt
-                    | Operator::GtEq
-                    | Operator::Lt
-                    | Operator::LtEq
-                    | Operator::Eq
-                    | Operator::NotEq => Ok(DataType::Bool),
-                    Operator::Plus | Operator::Minus => {
-                        if left_datatype != DataType::Int64
-                            || left_datatype != DataType::Float64
-                        {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: left_datatype,
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        }
-
-                        Ok(left_datatype)
-                    }
-                    Operator::And | Operator::Or => {
-                        if left_datatype != DataType::Bool {
-                            return Err(Error::PlanError(
-                                PlanError::ExprEvaluationError(
-                                    ExprEvaluationError::UnsupportedTypeForOp {
-                                        datatype: left_datatype,
-                                        op: *op,
-                                    },
-                                ),
-                            ));
-                        }
-
-                        Ok(DataType::Bool)
-                    }
-                }
+                let dt =
+                    op.datatype_of_operation(&left_datatype, &right_datatype)?;
+                Ok(dt)
             }
+        }
+    }
+
+    /// Assume this `Expr` is a constant, return the datatype of this `Expr`.
+    ///
+    /// An error will be returned if `self` is not constant.
+    pub fn datatype_of_constant_expr(&self) -> Result<DataType> {
+        match self {
+            Expr::Literal(data) => Ok(data.datatype()),
+            Expr::BinaryExpr { left, op, right } => {
+                let left_datatype = left.datatype_of_constant_expr()?;
+                let right_datatype = right.datatype_of_constant_expr()?;
+
+                let dt =
+                    op.datatype_of_operation(&left_datatype, &right_datatype)?;
+                Ok(dt)
+            }
+
+            _ => Err(Error::PlanError(PlanError::ExprEvaluationError(
+                ExprEvaluationError::ExprIsNotConstant { expr: self.clone() },
+            ))),
         }
     }
 }
@@ -260,13 +172,175 @@ pub enum Operator {
     Or,
 }
 
+impl Operator {
+    /// Operate on `lhs` and `rhs`.
+    pub fn operate(&self, lhs: Data, rhs: Data) -> Result<Data> {
+        // Currently, all our Operators require `lhs` and `rhs` should have the same type.
+        // this may change in the future.
+        let lhs_dt = lhs.datatype();
+        let rhs_dt = rhs.datatype();
+        if lhs_dt != rhs_dt {
+            return Err(Error::PlanError(PlanError::ExprEvaluationError(
+                ExprEvaluationError::DoOpOnDiffTypes {
+                    lhs: lhs_dt,
+                    op: *self,
+                    rhs: rhs_dt,
+                },
+            )));
+        }
+
+        let result = match self {
+            Operator::Gt => Data::Bool(lhs > rhs),
+            Operator::GtEq => Data::Bool(lhs >= rhs),
+            Operator::Lt => Data::Bool(lhs < rhs),
+            Operator::LtEq => Data::Bool(lhs <= rhs),
+            Operator::Eq => Data::Bool(lhs == rhs),
+            Operator::NotEq => Data::Bool(lhs != rhs),
+            Operator::Plus => {
+                if lhs_dt != DataType::Int64 && lhs_dt != DataType::Float64 {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: lhs_dt,
+                                op: *self,
+                            },
+                        ),
+                    ));
+                }
+
+                lhs + rhs
+            }
+            Operator::Minus => {
+                if lhs_dt != DataType::Int64 && lhs_dt != DataType::Float64 {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: lhs_dt,
+                                op: *self,
+                            },
+                        ),
+                    ));
+                }
+
+                lhs - rhs
+            }
+            Operator::And => {
+                let Data::Bool(left) = lhs else {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: lhs.datatype(),
+                                op: *self,
+                            },
+                        ),
+                    ));
+                };
+                let Data::Bool(right) = rhs else {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: rhs.datatype(),
+                                op: *self,
+                            },
+                        ),
+                    ));
+                };
+
+                Data::Bool(left && right)
+            }
+            Operator::Or => {
+                let Data::Bool(left) = lhs else {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: lhs.datatype(),
+                                op: *self,
+                            },
+                        ),
+                    ));
+                };
+                let Data::Bool(right) = rhs else {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: rhs.datatype(),
+                                op: *self,
+                            },
+                        ),
+                    ));
+                };
+
+                Data::Bool(left || right)
+            }
+        };
+
+        Ok(result)
+    }
+
+    /// Return the datatype of `lhs op rhs`.
+    pub fn datatype_of_operation(
+        &self,
+        lhs_dt: &DataType,
+        rhs_dt: &DataType,
+    ) -> Result<DataType> {
+        // Currently, all our Operators require `lhs` and `rhs` should have the same type.
+        // this may change in the future.
+        if lhs_dt != rhs_dt {
+            return Err(Error::PlanError(PlanError::ExprEvaluationError(
+                ExprEvaluationError::DoOpOnDiffTypes {
+                    lhs: *lhs_dt,
+                    op: *self,
+                    rhs: *rhs_dt,
+                },
+            )));
+        }
+
+        match self {
+            Operator::Gt
+            | Operator::GtEq
+            | Operator::Lt
+            | Operator::LtEq
+            | Operator::Eq
+            | Operator::NotEq => Ok(DataType::Bool),
+            Operator::Plus | Operator::Minus => {
+                if lhs_dt != &DataType::Int64 && lhs_dt != &DataType::Float64 {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: *lhs_dt,
+                                op: *self,
+                            },
+                        ),
+                    ));
+                }
+
+                Ok(*lhs_dt)
+            }
+            Operator::And | Operator::Or => {
+                if lhs_dt != &DataType::Bool {
+                    return Err(Error::PlanError(
+                        PlanError::ExprEvaluationError(
+                            ExprEvaluationError::UnsupportedTypeForOp {
+                                datatype: *lhs_dt,
+                                op: *self,
+                            },
+                        ),
+                    ));
+                }
+
+                Ok(DataType::Bool)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
     fn test_schema() -> Schema {
-        Schema::new([
+        Schema::new_with_duplicate_check([
             ("name".into(), DataType::String),
             ("age".into(), DataType::Int64),
             ("score".into(), DataType::Int64),

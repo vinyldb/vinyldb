@@ -27,7 +27,8 @@ impl Executor for DescribeTableExec {
         let null = (String::from("null"), DataType::String);
         let key = (String::from("key"), DataType::String);
 
-        Schema::new([column_name, column_type, null, key]).unwrap()
+        Schema::new_with_duplicate_check([column_name, column_type, null, key])
+            .unwrap()
     }
 
     fn execute(&self, ctx: &mut Context) -> Result<TupleStream> {

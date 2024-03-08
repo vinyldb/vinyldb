@@ -36,7 +36,7 @@ pub enum UnimplementedFeature {
     Null,
 }
 
-#[derive(Debug, Display, Error, Copy, Clone)]
+#[derive(Debug, Display, Error, Clone)]
 pub enum ExprEvaluationError {
     #[display(
         fmt = "trying to do '{op}' on different types '{lhs}' and '{rhs}'"
@@ -48,6 +48,8 @@ pub enum ExprEvaluationError {
     },
     #[display(fmt = "Operation '{op}' cannot be done on type '{datatype}'")]
     UnsupportedTypeForOp { datatype: DataType, op: Operator },
+    #[display(fmt = "{expr} needs to be a constant but it is not")]
+    ExprIsNotConstant { expr: Expr },
 }
 
 /// Errors that could happen while converting an SQL AST to a [`LogicalPlan`].

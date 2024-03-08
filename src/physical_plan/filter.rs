@@ -33,7 +33,9 @@ impl Executor for FilterExec {
         Ok(Box::new(stream.filter(move |tuple| {
             as_variant!(
                 Data::Bool,
-                predicate.evaluate(&schema, tuple).expect("TODO")
+                predicate.evaluate(&schema, tuple).expect(
+                    "should not fail to evaluate an `Expr` during execution"
+                )
             )
         })))
     }

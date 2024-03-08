@@ -27,11 +27,13 @@ ShowTablesExec
 query T
 EXPLAIN SELECT * FROM foo;
 ----
+ProjectionExec
 TableScanExec
 
 query T
 EXPLAIN SELECT * FROM foo WHERE name = 'steve';
 ----
+ProjectionExec
 FilterExec
 TableScanExec
 
@@ -59,16 +61,19 @@ TableScanExec
 query T
 EXPLAIN SELECT * FROM foo OFFSET 0;
 ----
+ProjectionExec
 TableScanExec
 
 query T
 EXPLAIN SELECT * FROM foo OFFSET 1;
 ----
+ProjectionExec
 LimitExec
 TableScanExec
 
 query T
 EXPLAIN SELECT * FROM foo OFFSET 1 LIMIT 1;
 ----
+ProjectionExec
 LimitExec
 TableScanExec

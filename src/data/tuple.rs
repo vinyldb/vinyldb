@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn encode_decode() {
-        let schema = Schema::new([
+        let schema = Schema::new_with_duplicate_check([
             ("1".into(), DataType::Bool),
             ("2".into(), DataType::String),
             ("3".into(), DataType::Int64),
