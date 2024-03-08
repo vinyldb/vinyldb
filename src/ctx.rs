@@ -7,8 +7,9 @@ use crate::{
     physical_plan::{
         create_table::CreateTableExec, describe_table::DescribeTableExec,
         explain::ExplainExec, filter::FilterExec, insert::InsertExec,
-        limit::LimitExec, projection::ProjectionExec,
-        show_tables::ShowTablesExec, table_scan::TableScanExec, Executor,
+        limit::LimitExec, one_row_placeholder::OneRowPlaceholderExec,
+        projection::ProjectionExec, show_tables::ShowTablesExec,
+        table_scan::TableScanExec, Executor,
     },
     storage_engine::StorageEngine,
 };
@@ -130,6 +131,7 @@ impl Context {
                     input,
                 ))
             }
+            LogicalPlan::OneRowPlaceholder => Box::new(OneRowPlaceholderExec),
         };
 
         Ok(plan)

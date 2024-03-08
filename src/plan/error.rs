@@ -87,6 +87,10 @@ pub enum PlanError {
     NonUintLimitOffset { expr: Data },
     #[display(fmt = "This feature has not been implemented yet: {_0}")]
     Unimplemented(UnimplementedFeature),
+    #[display(fmt = "* expression without FROM clause")]
+    WildcardWithoutFrom,
+    #[display(fmt = "Non-cnostant expr {expr} without FROM clause")]
+    NonConstantExprWithoutFrom { expr: Expr },
 }
 
 pub type PlanResult<T> = Result<T, PlanError>;

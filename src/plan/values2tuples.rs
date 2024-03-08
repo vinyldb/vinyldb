@@ -33,7 +33,7 @@ pub fn values_to_tuples(
         for (idx, (expected_datatype, expr)) in
             datatypes.zip(row.into_iter()).enumerate()
         {
-            let expr = convert_expr(schema, expr)?;
+            let expr = convert_expr(expr)?;
             let data = as_variant!(Expr::Literal, expr);
             let datatype = data.datatype();
             if &datatype != expected_datatype {

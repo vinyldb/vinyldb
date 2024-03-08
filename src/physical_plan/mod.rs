@@ -4,6 +4,7 @@ pub mod explain;
 pub mod filter;
 pub mod insert;
 pub mod limit;
+pub mod one_row_placeholder;
 pub mod projection;
 pub mod show_tables;
 pub mod table_scan;
