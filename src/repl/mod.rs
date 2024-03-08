@@ -4,13 +4,12 @@ mod table;
 use crate::{ctx::Context, error::Result, meta_cmd::MetaCmd};
 use colored::Colorize;
 use prompt::VinylPrompt;
-use reedline_sql_highlighter::SQLKeywordHighlighter;
-use std::{ops::Deref, path::PathBuf, time::SystemTime};
-
-use crate::repl::table::display;
 use reedline::{
     CursorConfig, DefaultHinter, Emacs, FileBackedHistory, Reedline, Signal,
 };
+use reedline_sql_highlighter::SQLKeywordHighlighter;
+use std::{ops::Deref, path::PathBuf, time::SystemTime};
+use table::display;
 
 pub fn run_repl(
     repl: &mut Reedline,
