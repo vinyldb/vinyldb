@@ -1,4 +1,5 @@
 pub mod prompt;
+mod table;
 
 use crate::{ctx::Context, error::Result, meta_cmd::MetaCmd};
 use colored::Colorize;
@@ -6,6 +7,7 @@ use prompt::VinylPrompt;
 use reedline_sql_highlighter::SQLKeywordHighlighter;
 use std::{ops::Deref, path::PathBuf, time::SystemTime};
 
+use crate::repl::table::display;
 use reedline::{
     CursorConfig, DefaultHinter, Emacs, FileBackedHistory, Reedline, Signal,
 };
@@ -43,15 +45,13 @@ pub fn run_repl(
 
     let logical_plan = ctx.statement_to_logical_plan(statement)?;
     let physical_plan = ctx.create_physical_plan(&logical_plan)?;
+    let result = ctx.collect(physical_plan.deref())?;
+    let time = now.elapsed().unwrap();
 
-    let iter = ctx.execute(physical_plan.deref())?;
-    for tuple in iter {
-        println!("{}", tuple);
-    }
-    println!();
+    println!("{}", display(&physical_plan.schema(), result));
 
     if ctx.config.timer {
-        println!("Took {:?}", now.elapsed().unwrap());
+        println!("Took {:?}", time);
     }
 
     Ok(())

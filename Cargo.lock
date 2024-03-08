@@ -237,6 +237,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "comfy-table"
+version = "7.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c64043d6c7b7a4c58e39e7efccfdea7b93d885a795d0c054a69dbbf4dd52686"
+dependencies = [
+ "crossterm",
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
+ "unicode-width",
+]
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1390,6 +1402,7 @@ dependencies = [
  "camino",
  "camino-tempfile",
  "colored",
+ "comfy-table",
  "crossterm",
  "derive_builder",
  "derive_more",
