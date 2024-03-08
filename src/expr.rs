@@ -33,6 +33,11 @@ impl Expr {
     pub fn is_constant(&self) -> bool {
         match self {
             Expr::Literal(_) => true,
+            // TODO: handle the cases where short-circuit may happen
+            //
+            // I think we can have short-circuit here, say op is `Operator::Or`,
+            // then left is a constant and can be evaluated to `Expr::Literal(true)`,
+            // then `true Or anything` will be true, i.e., a constant.
             Expr::BinaryExpr { left, right, .. } => {
                 left.is_constant() && right.is_constant()
             }
@@ -46,22 +51,18 @@ impl Expr {
     /// # NOTE
     /// All the tuples in `data` should have schema `schema`.
     pub fn evaluate(&self, schema: &Schema, data: &Tuple) -> Result<Data> {
-        let ret = match self {
+        match self {
             Expr::Column(col_name) => {
                 let idx = schema.index_of_column(col_name)?;
-                data.get(idx).expect("schema error").clone()
+                Ok(data.get(idx).expect("schema error").clone())
             }
-            Expr::Literal(literal) => literal.clone(),
+            Expr::Literal(literal) => Ok(literal.clone()),
             Expr::BinaryExpr { left, op, right } => {
                 let left = left.evaluate(schema, data)?;
                 let right = right.evaluate(schema, data)?;
-                let data = op.operate(left, right)?;
-
-                data
+                op.operate(left, right)
             }
-        };
-
-        Ok(ret)
+        }
     }
 
     /// Evaluate `Expr`s, in batch.
@@ -78,15 +79,15 @@ impl Expr {
         Ok(result)
     }
 
-    /// Evaluate this `Expr` to a constant
+    /// Evaluate this `Expr` to a constant.
     ///
-    /// # Panic
-    /// This `Expr` must be a constant, or this function will panic.
+    /// An error will be returned if `self` is not constant.
     pub fn evaluate_constant_expr(&self) -> Result<Data> {
         match self {
             Expr::Literal(data) => Ok(data.clone()),
             Expr::BinaryExpr { left, op, right } => {
                 let left = left.evaluate_constant_expr()?;
+                // TODO: handle short-circuit
                 let right = right.evaluate_constant_expr()?;
                 let data = op.operate(left, right)?;
 
@@ -115,6 +116,8 @@ impl Expr {
     }
 
     /// Assume this `Expr` is a constant, return the datatype of this `Expr`.
+    ///
+    /// An error will be returned if `self` is not constant.
     pub fn datatype_of_constant_expr(&self) -> Result<DataType> {
         match self {
             Expr::Literal(data) => Ok(data.datatype()),

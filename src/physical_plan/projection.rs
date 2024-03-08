@@ -40,8 +40,9 @@ impl Executor for ProjectionExec {
         let exprs = self.expr.clone();
         let projected_stream = stream.map(move |tuple| {
             Tuple::new(
-                Expr::evaluate_batch(&exprs, &input_schema, &tuple)
-                    .expect("TODO"),
+                Expr::evaluate_batch(&exprs, &input_schema, &tuple).expect(
+                    "should not fail to evaluate an Expr during execution",
+                ),
             )
         });
 

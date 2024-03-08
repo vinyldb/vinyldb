@@ -56,8 +56,13 @@ impl Schema {
     pub fn column_datatype(&self, name: &str) -> CatalogResult<&DataType> {
         self.columns
             .get(name)
-            .ok_or_else(|| CatalogError::TableDoesNotExist {
-                name: name.to_string(),
+            .ok_or_else(|| CatalogError::ColumnDoesNotExist {
+                column: name.to_string(),
+                candidate: self
+                    .columns
+                    .iter()
+                    .map(|(name, _)| name.clone())
+                    .collect(),
             })
     }
 

@@ -6,6 +6,13 @@ pub enum CatalogError {
     TableExists { name: String },
     #[display(fmt = "Table with name '{}' does not exist", name)]
     TableDoesNotExist { name: String },
+    #[display(
+        fmt = "Referenced column '{column}' not found\nCandidate columns: {candidate:?}"
+    )]
+    ColumnDoesNotExist {
+        column: String,
+        candidate: Vec<String>,
+    },
     #[display(fmt = "Column with name '{}' already exists", name)]
     ColumnExists { name: String },
 }
