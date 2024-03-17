@@ -12,7 +12,69 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  rustfmt:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Rust toolchain
+        id: cache-rust-toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup/
+          key: rust-toolchain-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
+
+      - name: setup Rust
+        if: steps.cache-rust-toolchain.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
+          components: rustfmt
+
+      - name: check format
+        run: cargo fmt --all -- --check
+
+  macos:
+    needs: rustfmt
+    runs-on: macos-14
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Rust toolchain
+        id: cache-rust-toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rustup/
+          key: rust-toolchain-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
+
+      - name: Cache target
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: setup Rust
+        if: steps.cache-rust-toolchain.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
+          components: clippy
+
+      - name: clippy
+        run: cargo clippy --verbose
+
+      - name: test
+        run: cargo test --verbose
+
+      - name: before_cache_script
+        run: rm -rf $CARGO_HOME/registry/index
+
   linux:
+    needs: rustfmt
     runs-on: ubuntu-22.04
     steps:
       - name: checkout
@@ -36,10 +98,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: '${{ env.RUST_TOOLCHAIN }}'
-          components: rustfmt, clippy
-      
-      - name: check format
-        run: cargo fmt --all -- --check
+          components: clippy
 
       - name: clippy
         run: cargo clippy --verbose
