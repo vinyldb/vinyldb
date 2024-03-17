@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+tokio = { git = "https://github.com/SteveLauC/tokio", branch = "feat/op_at", features = ["macros", "rt-multi-thread", "sync", "fs", "io-util"] }
 bytes = "1.5.0"
 camino = "1.1.6"
 colored = "2.1.0"
