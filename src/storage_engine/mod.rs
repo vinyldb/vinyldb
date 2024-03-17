@@ -1,3 +1,6 @@
+mod page;
+mod table;
+
 use crate::{catalog::error::CatalogError, config::Config, error::Result};
 use sled::{Db, Tree};
 use std::collections::{hash_map::Entry, HashMap};
